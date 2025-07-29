@@ -168,7 +168,7 @@ class Collection(ABC):
         from promis.loaders import OsmLoader
 
         # Get OpenStreetMap and crop to relevant area
-        south, west, north, east = OsmLoader.compute_bounding_box(self.origin, self.dimensions())
+        south, west, north, east = OsmLoader.compute_polar_bounding_box(self.origin, self.dimensions)
         map = smopy.Map((south, west, north, east), z=zoom)
         left, bottom = map.to_pixels(south, west)
         right, top = map.to_pixels(north, east)
