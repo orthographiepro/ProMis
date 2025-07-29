@@ -15,7 +15,7 @@ from pickle import dump, load
 from typing import TypeVar
 
 # Third Party
-from numpy import array, clip, mean, sqrt, var, vstack
+from numpy import ndarray, array, clip, mean, sqrt, var, vstack
 from scipy.stats import norm
 from shapely.strtree import STRtree
 
@@ -125,7 +125,7 @@ class Relation(ABC):
         location: CartesianLocation,
         r_trees: list[STRtree],
         original_geometries: list[CartesianMap],
-    ) -> array:
+    ) -> ndarray:
         """Compute the parameters of this Relation type for a specific location and set of maps.
 
         Args:
