@@ -83,6 +83,7 @@ class OsmLoader(SpatialLoader):
                             for node in way.nodes
                         ],
                         location_type=name,
+                        tags=dict((k, way.tags[k]) for k in ["oneway", "lanes", "maxspeed"] if k in way.tags),
                     )
                     for way in result.ways
                 ]

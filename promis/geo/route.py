@@ -35,6 +35,7 @@ class Route(Geospatial):
         name: str | None = None,
         identifier: int | None = None,
         covariance: ndarray | None = None,
+        tags: dict[str, str | None] | None = {},
     ) -> None:
         # Assertions on the given locations
         assert len(locations) >= 2, "A route must contain at least two points!"
@@ -47,6 +48,12 @@ class Route(Geospatial):
 
         # Setup Geospatial
         super().__init__(location_type=location_type, name=name, identifier=identifier)
+        
+        # Setup tags
+        self.tags = tags
+        self.tags.setdefault("lanes", "1")
+        self.tags.setdefault("maxspeed", None)
+        self.tags.setdefault("oneway", "no")
 
     @property
     def covariance(self) -> ndarray:
@@ -140,9 +147,10 @@ class PolarRoute(Route):
         name: str | None = None,
         identifier: int | None = None,
         covariance: ndarray | None = None,
+        tags: dict[str, str | None] | None = {},
     ) -> None:
         # Setup Route
-        super().__init__(locations, location_type, name, identifier, covariance)
+        super().__init__(locations, location_type, name, identifier, covariance, tags)
 
     def to_cartesian(self, origin: PolarLocation) -> "CartesianRoute":
         """Projects this route to a Cartesian one according to the given global reference.
@@ -166,6 +174,7 @@ class PolarRoute(Route):
             location_type=self.location_type,
             name=self.name,
             identifier=self.identifier,
+            tags=self.tags,
             covariance=radians_to_meters(
                 array(
                     [radians(degree) for degree in self.distribution.covariance.reshape(4)]
@@ -234,13 +243,14 @@ class CartesianRoute(Route):
         identifier: int | None = None,
         covariance: ndarray | None = None,
         origin: PolarLocation | None = None,
+        tags: dict[str, str | None] | None = {},
     ):
         # Setup attributes
         self.origin = origin
         self.geometry = LineString([location.geometry.coords[0] for location in locations])
 
         # Setup Route
-        Route.__init__(self, locations, location_type, name, identifier, covariance)
+        Route.__init__(self, locations, location_type, name, identifier, covariance, tags)
 
     def to_polar(self, origin: PolarLocation | None = None) -> PolarRoute:
         """Computes the polar representation of this route.
@@ -276,6 +286,7 @@ class CartesianRoute(Route):
             location_type=self.location_type,
             name=self.name,
             identifier=self.identifier,
+            tags=self.tags,
             covariance=array(
                 [degrees(rad) for rad in meters_to_radians(self.distribution.covariance).reshape(4)]
             ).reshape(2, 2)
