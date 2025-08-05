@@ -39,6 +39,7 @@ class Polygon(Geospatial):
         name: str | None = None,
         identifier: int | None = None,
         covariance: ndarray | None = None,
+        tags: dict[str, str | None] | None = {}, 
     ) -> None:
         # Assertions on the given locations
         assert len(locations) >= 3, "A polygon must contain at least three points!"
@@ -57,6 +58,9 @@ class Polygon(Geospatial):
         # Setup Gaussian distribution for sampling the polygon
         self.covariance = covariance
 
+        # Setup tags
+        self.tags = tags
+        
         # Setup Geospatial
         super().__init__(location_type=location_type, name=name, identifier=identifier)
 
@@ -189,9 +193,10 @@ class PolarPolygon(Polygon):
         name: str | None = None,
         identifier: int | None = None,
         covariance: ndarray | None = None,
+        tags: dict[str, str | None] | None = {},
     ) -> None:
         # Setup Polygon
-        super().__init__(locations, holes, location_type, name, identifier, covariance)
+        super().__init__(locations, holes, location_type, name, identifier, covariance, tags)
 
     @classmethod
     def from_numpy(cls, data: ndarray, *args, **kwargs) -> "PolarPolygon":
@@ -248,6 +253,7 @@ class PolarPolygon(Polygon):
             if self.distribution is not None
             else None,
             origin=origin,
+            tags=self.tags,
         )
 
     def __repr__(self) -> str:
@@ -319,6 +325,7 @@ class CartesianPolygon(Polygon):
         identifier: int | None = None,
         covariance: ndarray | None = None,
         origin: PolarLocation | None = None,
+        tags: dict[str, str | None] | None = {},
     ) -> None:
         # Setup attributes
         self.origin = origin
@@ -332,7 +339,7 @@ class CartesianPolygon(Polygon):
             self.geometry = ShapelyPolygon([location.geometry.coords[0] for location in locations])
 
         # Setup Polygon
-        Polygon.__init__(self, locations, holes, location_type, name, identifier, covariance)
+        Polygon.__init__(self, locations, holes, location_type, name, identifier, covariance, tags)
 
     @classmethod
     def from_numpy(cls, data: ndarray, *args, **kwargs) -> "CartesianPolygon":
@@ -411,6 +418,7 @@ class CartesianPolygon(Polygon):
             ).reshape(2, 2)
             if self.distribution is not None
             else None,
+            tags=self.tags,
         )
 
     def plot(self, axis, **kwargs) -> None:

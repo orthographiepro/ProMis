@@ -764,3 +764,50 @@ def mean_angle(radians: ndarray, tolerance: float = 1e-6) -> float:
         )
 
     return atan2(x, y) % tau
+
+def calculate_street_width(route ) -> float:
+    """Calculates the street width for a given route based on common construction guidelines and numbers of lanes.
+        Note that this is an approximation and real widths might differ.
+
+    Args:
+        route (Route): the route for which the total width needs to be calculated
+
+    Raises:
+        ValueError: if route has an unclear location_type
+
+    References:
+        <https://de.wikipedia.org/wiki/Richtlinien_f%C3%BCr_die_Anlage_von_Stra%C3%9Fen_%E2%80%93_Querschnitt>
+
+    Returns:
+        float: street width
+    """
+    base_width: float
+    match route.location_type:
+        case "motorway":
+            # Autobahn
+            base_width = 3.5
+            # Mittelstreifen 2.5 - 4 m
+        case "trunk":
+            # Kraftfahrstraße
+            base_width = 3.5
+        case "primary":
+            # Bundesstraße
+            base_width = 3.5
+        case "secondary":
+            # Landesstraße
+            base_width = 3
+        case "tertiary":
+            base_width = 2.75
+        case "residential":
+            base_width = 2.75
+        case "living_street":
+            base_width = 2.75
+        case "undefined":
+            base_width = 2.75
+        case "service":
+            base_width = 2.5
+        case _:
+            return 1
+        
+    # add space for Mittelstreifen and broader truck lanes for motorways
+    return base_width * int(route.tags["lanes"]) + (4 if route.location_type == "motorway" else 0)

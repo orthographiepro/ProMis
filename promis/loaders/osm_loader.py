@@ -12,12 +12,14 @@
 from time import sleep
 
 # Third Party
+import numpy as np
 from overpy import Overpass, Relation
 from overpy.exception import OverpassGatewayTimeout, OverpassTooManyRequests
 
 # ProMis
 from promis.geo import PolarLocation, PolarPolygon, PolarRoute
 from promis.loaders.spatial_loader import SpatialLoader
+from promis.geo.helpers import calculate_street_width
 
 
 class OsmLoader(SpatialLoader):
@@ -28,35 +30,37 @@ class OsmLoader(SpatialLoader):
         origin: PolarLocation,
         dimensions: tuple[float, float],
         feature_description: dict | None,
+        polygonize_routes = False,
     ):
         # Initialize Overpass API
         self.overpass_api = Overpass()
         super().__init__(origin, dimensions)
 
+        self.polygonize_routes = polygonize_routes
         if feature_description is not None:
             self.load(feature_description)
 
     def load(self, feature_description: dict[str, str]) -> None:
         for location_type, osm_filter in feature_description.items():
-            self._load_routes(osm_filter, location_type)
-            self._load_polygons(osm_filter, location_type)
+            if self.polygonize_routes:
+                self._load_routes_polygonized(osm_filter, location_type)
+            else:
+                self._load_routes(osm_filter, location_type)
+                self._load_polygons(osm_filter, location_type)
 
     def _load_routes(
         self,
         filters: str,
         name: str,
         timeout: float = 5.0,
-    ) -> list[PolarRoute]:
-        """Loads all selected ways from OSM as PolarRoute.
+    ) -> None:
+        """Loads all selected ways from OSM as PolarRoute into features.
 
         Args:
             tag: The tag that way and relation will be qualitfied with, required to
                 contain the quotation marks for Overpass, e.g. "leisure"="park" or "building"
             bounding_box: The bounding box for Overpass
             location_type: The type to assign to each loaded route
-
-        Returns:
-            A list of all found map features as PolarRoutes
         """
 
         # Compute bounding box and format it for Overpass
@@ -95,22 +99,104 @@ class OsmLoader(SpatialLoader):
             else:
                 break
 
-    def _load_polygons(
+    def _load_routes_polygonized(
         self,
         filters: str,
         name: str,
         timeout: float = 5.0,
-    ) -> list[PolarRoute]:
-        """Loads all selected ways from OSM as PolarRoute.
+    ) -> None:
+        """Loads all selected ways from OSM as PolarPolygon into features.
 
         Args:
             tag: The tag that way and relation will be qualitfied with, required to
                 contain the quotation marks for Overpass, e.g. "leisure"="park" or "building"
             bounding_box: The bounding box for Overpass
             location_type: The type to assign to each loaded route
+        """
 
-        Returns:
-            A list of all found map features as PolarRoutes
+        # Compute bounding box and format it for Overpass
+        south, west, north, east = self.compute_polar_bounding_box(self.origin, self.dimensions)
+        bounding_box = f"({south:.4f}, {west:.4f}, {north:.4f}, {east:.4f})"
+
+        # Load data via Overpass
+        routes: list[PolarRoute] = []
+        while True:
+            try:
+                result = self.overpass_api.query(
+                    f"""
+                        [out:json];
+                        way{filters}{bounding_box};
+                        out geom{bounding_box};>;out;
+                    """
+                )
+
+                routes += [
+                    PolarRoute(
+                        [
+                            PolarLocation(
+                                latitude=float(node.lat), longitude=float(node.lon), location_type=name
+                            )
+                            for node in way.nodes
+                        ],
+                        location_type=name,
+                        tags=dict((k, way.tags[k]) for k in ["oneway", "lanes", "maxspeed"] if k in way.tags),
+                    )
+                    for way in result.ways
+                ]
+
+            except (OverpassGatewayTimeout, OverpassTooManyRequests):
+                print(f"OSM query failed, sleeping {timeout}s...")
+                sleep(timeout)
+            except AttributeError:
+                break
+            else:
+                # print("routes fetched:")
+                # print(routes)
+                for route in routes:
+                    locs = route.locations
+                    numpy_locs = [l.to_numpy() for l in locs]
+
+                    normals = np.array([
+                        np.flip(numpy_locs[i+1] - numpy_locs[i]) * np.array([-1, 1]) / \
+                        locs[i+1].distance(locs[i])
+                        for i in range(len(numpy_locs) - 1)
+                    ])
+                    normals = calculate_street_width(route) * 0.5 * normals
+
+                    positive_nodes = []
+                    negative_nodes = []
+                    for i, normal in enumerate(normals):
+                        loc_a, loc_b = locs[i], locs[i+1]
+                        positive_nodes.append(loc_a + normal)
+                        positive_nodes.append(loc_b + normal)
+                        negative_nodes.append(loc_a - normal)
+                        negative_nodes.append(loc_b - normal)
+                    negative_nodes.reverse()
+
+                    self.features.append(PolarPolygon(
+                        locations=positive_nodes + negative_nodes, 
+                        holes=None, 
+                        location_type=route.location_type, 
+                        name=route.name,
+                        identifier=route.identifier,
+                        covariance=route.covariance,
+                        tags=route.tags,
+                    ))
+                break
+
+    def _load_polygons(
+        self,
+        filters: str,
+        name: str,
+        timeout: float = 5.0,
+    ) -> None:
+        """Loads all selected ways from OSM as PolarPolygon into features.
+
+        Args:
+            tag: The tag that way and relation will be qualitfied with, required to
+                contain the quotation marks for Overpass, e.g. "leisure"="park" or "building"
+            bounding_box: The bounding box for Overpass
+            location_type: The type to assign to each loaded route
         """
 
         # Compute bounding box and format it for Overpass
