@@ -13,11 +13,12 @@ from time import sleep
 
 # Third Party
 import numpy as np
+from shapely.geometry import Point, LineString, MultiPolygon
 from overpy import Overpass, Relation
 from overpy.exception import OverpassGatewayTimeout, OverpassTooManyRequests
 
 # ProMis
-from promis.geo import PolarLocation, PolarPolygon, PolarRoute
+from promis.geo import PolarLocation, PolarPolygon, PolarRoute, CartesianLocation
 from promis.loaders.spatial_loader import SpatialLoader
 from promis.geo.helpers import calculate_street_width
 
@@ -150,38 +151,31 @@ class OsmLoader(SpatialLoader):
             except AttributeError:
                 break
             else:
-                # print("routes fetched:")
-                # print(routes)
-                for route in routes:
-                    locs = route.locations
-                    numpy_locs = [l.to_numpy() for l in locs]
-
-                    normals = np.array([
-                        np.flip(numpy_locs[i+1] - numpy_locs[i]) * np.array([-1, 1]) / \
-                        locs[i+1].distance(locs[i])
-                        for i in range(len(numpy_locs) - 1)
-                    ])
-                    normals = calculate_street_width(route) * 0.5 * normals
-
-                    positive_nodes = []
-                    negative_nodes = []
-                    for i, normal in enumerate(normals):
-                        loc_a, loc_b = locs[i], locs[i+1]
-                        positive_nodes.append(loc_a + normal)
-                        positive_nodes.append(loc_b + normal)
-                        negative_nodes.append(loc_a - normal)
-                        negative_nodes.append(loc_b - normal)
-                    negative_nodes.reverse()
-
-                    self.features.append(PolarPolygon(
-                        locations=positive_nodes + negative_nodes, 
-                        holes=None, 
-                        location_type=route.location_type, 
-                        name=route.name,
-                        identifier=route.identifier,
-                        covariance=route.covariance,
-                        tags=route.tags,
-                    ))
+                buffers_tags = [
+                    (
+                        LineString([loc.to_cartesian(self.origin).to_numpy() for loc in route.locations])
+                        .buffer(calculate_street_width(route) / 2),
+                        route.tags,
+                    )
+                    for route in routes
+                ]
+                self.features += [
+                    PolarPolygon(
+                        locations=[
+                            CartesianLocation(*point, location_type=name)
+                            .to_polar(self.origin)
+                            for point in buffer.geoms[0].exterior.coords
+                        ] if isinstance(buffer, MultiPolygon) else 
+                        [
+                            CartesianLocation(*point, location_type=name)
+                            .to_polar(self.origin) 
+                            for point in buffer.exterior.coords
+                        ],
+                        location_type=name,
+                        tags=tags,
+                    )
+                    for buffer, tags in buffers_tags
+                ]
                 break
 
     def _load_polygons(
