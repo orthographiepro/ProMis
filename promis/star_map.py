@@ -31,7 +31,7 @@ from sklearn.preprocessing import StandardScaler, normalize
 
 # ProMis
 from promis.geo import CartesianCollection, CartesianLocation, CartesianMap, RasterBand
-from promis.logic.spatial import Depth, Distance, Over, Relation
+from promis.logic.spatial import Depth, Distance, Over, Relation, MaxVelocity
 
 
 class _RelationInformation(TypedDict):
@@ -97,6 +97,7 @@ class StaRMap:
             "over": defaultdict(self._empty_relation),
             "distance": defaultdict(self._empty_relation),
             "depth": defaultdict(self._empty_relation),
+            "maxspeed": defaultdict(self._empty_relation),
         }
 
     def _empty_relation(self) -> _RelationInformation:
@@ -116,6 +117,8 @@ class StaRMap:
                 return Distance
             case "depth":
                 return Depth
+            case "maxspeed":
+                return MaxVelocity
             case _:
                 raise NotImplementedError(f'Requested unknown relation "{relation}" from StaR Map')
 

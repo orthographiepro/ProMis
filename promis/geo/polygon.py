@@ -20,6 +20,8 @@ from matplotlib.path import Path
 from numpy import array, asarray, isfinite, ndarray, vstack
 from shapely.geometry import Polygon as ShapelyPolygon
 
+import numpy as np
+
 # ProMis
 from promis.geo.geospatial import Geospatial
 from promis.geo.helpers import meters_to_radians, radians_to_meters
@@ -60,6 +62,9 @@ class Polygon(Geospatial):
 
         # Setup tags
         self.tags = tags
+        self.tags.setdefault("lanes", "1")
+        self.tags.setdefault("maxspeed", "-1")
+        self.tags.setdefault("oneway", "no")
         
         # Setup Geospatial
         super().__init__(location_type=location_type, name=name, identifier=identifier)
@@ -103,6 +108,7 @@ class Polygon(Geospatial):
                     self.name,
                     self.identifier,
                     self.covariance,
+                    tags=self.tags,
                 )
             ] * number_of_samples
 
@@ -125,9 +131,11 @@ class Polygon(Geospatial):
                     self.name,
                     self.identifier,
                     self.covariance,
+                    tags=self.tags.copy(),
                 )
             )
-
+        
+        
         return sampled_polygons
 
 

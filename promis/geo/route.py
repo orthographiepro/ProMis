@@ -52,7 +52,7 @@ class Route(Geospatial):
         # Setup tags
         self.tags = tags
         self.tags.setdefault("lanes", "1")
-        self.tags.setdefault("maxspeed", None)
+        self.tags.setdefault("maxspeed", "-1")
         self.tags.setdefault("oneway", "no")
 
     @property
@@ -84,7 +84,7 @@ class Route(Geospatial):
         if self.distribution is None:
             return [
                 type(self)(
-                    self.locations, self.location_type, self.name, self.identifier, self.covariance
+                    self.locations, self.location_type, self.name, self.identifier, self.covariance, tags=self.tags
                 )
             ] * number_of_samples
 
@@ -101,6 +101,7 @@ class Route(Geospatial):
                     self.name,
                     self.identifier,
                     self.covariance,
+                    tags=self.tags,
                 )
             )
 
