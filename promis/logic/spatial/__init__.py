@@ -14,5 +14,7 @@ from promis.logic.spatial.distance import Distance
 from promis.logic.spatial.over import Over
 from promis.logic.spatial.relation import Relation
 from promis.logic.spatial.max_velocity import MaxVelocity
+from promis.logic.spatial.crosses import Crosses
+from promis.logic.spatial.delta_relation import DeltaRelation
 
-__all__ = ["Distance", "Over", "Depth", "Relation"]
+__all__ = ["Distance", "Over", "Depth", "Relation", "MaxVelocity", "Crosses", "DeltaRelation"]

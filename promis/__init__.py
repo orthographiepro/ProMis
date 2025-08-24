@@ -10,7 +10,7 @@
 
 # ProMis
 from promis.promis import ProMis
-from promis.star_map import StaRMap
+from promis.star_map import StaRMap, DeltaStaRMap
 
 __all__ = ["ProMis", "StaRMap"]
 __version__ = "0.1.0"

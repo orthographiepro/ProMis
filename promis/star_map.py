@@ -31,7 +31,7 @@ from sklearn.preprocessing import StandardScaler, normalize
 
 # ProMis
 from promis.geo import CartesianCollection, CartesianLocation, CartesianMap, RasterBand
-from promis.logic.spatial import Depth, Distance, Over, Relation, MaxVelocity
+from promis.logic.spatial import Depth, Distance, Over, Relation, DeltaRelation, MaxVelocity, Crosses
 
 
 class _RelationInformation(TypedDict):
@@ -503,3 +503,125 @@ class StaRMap:
                     )
 
         self.fit(what)
+
+class DeltaStaRMap(StaRMap):
+    def __init__(self, target, uam, method = "linear", bearing: float = 0, speed: float = 1):
+        super().__init__(target, uam, method)
+        self.bearing = bearing
+        self.speed = speed
+
+    def initialize(self, support: CartesianCollection, number_of_random_maps: int, logic: str):
+        """Setup the StaRMap for a given set of support points, number of samples and logic.
+
+        Args:
+            support: The support points to be computed
+            number_of_random_maps: The number of samples to be used per support point
+            logic: The set of constraints deciding which relations are computed
+        """
+
+        self.add_support_points(
+            support, number_of_random_maps, self._get_mentioned_relations(logic)
+        )
+
+    def clear_relations(self):
+        """Clear out the stored relations data."""
+
+        # Keep in sync with relation_name_to_class()
+        super().clear_relations()
+        self.relations.update({
+            "crosses": defaultdict(self._empty_relation),
+        })
+
+    def _empty_relation(self) -> _RelationInformation:
+        return {
+            # Two values for storing mean and variance
+            "collection": CartesianCollection(self.target.origin, 2),
+            "approximator": None,
+        }
+
+    @staticmethod
+    def relation_name_to_class(relation: str) -> Relation | DeltaRelation:
+        # Keep in sync with clear_relations()
+        match relation:
+            case "crosses":
+                return Crosses
+            case _:
+                return StaRMap.relation_name_to_class(relation)
+
+
+    def add_support_points(
+        self,
+        support: CartesianCollection,
+        number_of_random_maps: int,
+        what: dict[str, Iterable[str | None]] | None = None,
+    ):
+        """Compute distributional clauses.
+
+        Args:
+            support: The Collection of points for which the spatial relations will be computed
+            number_of_random_maps: How often to sample from map data in order to
+                compute statistics of spatial relations
+            what: The spatial relations to compute, as a mapping of relation names to location types
+        """
+
+        what = self.relation_and_location_types if what is None else what
+        all_location_types = [location_type for types in what.values() for location_type in types]
+
+        for location_type in all_location_types:
+            # Get all relevant features from map
+            typed_map: CartesianMap = self.uam.filter(location_type)
+
+            # Setup data structures
+            random_maps = typed_map.sample(number_of_random_maps, n_jobs=8)
+            r_trees = [instance.to_rtree() for instance in random_maps]
+
+            # This could be parallelized, as each relation and location type is independent
+            # from all others.
+            for relation, types in what.items():
+                if relation not in what or location_type not in types:
+                    continue
+
+                # Determine relation class and collection to write to
+                relation_class = self.relation_name_to_class(relation)
+                info = self.relations[relation][location_type]
+                value_collection = info["collection"]
+
+                # If the map had no relevant features, fill with default values
+                if not typed_map.features:
+                    value_collection.append_with_default(
+                        support.coordinates(), relation_class.empty_map_parameters()
+                    )
+                    warn(
+                        f'no features for relation "{relation}" for location type "{location_type}"'
+                    )
+                    continue
+
+                try:
+                    # Compute the relation value for each support point
+                    if issubclass(relation_class, DeltaRelation):
+                        instantiated_relation = relation_class.from_r_trees(
+                            support, self.bearing, self.speed, r_trees, location_type, original_geometries=random_maps
+                        )
+                        values = instantiated_relation.parameters
+                        value_collection.append(values.coordinates(), values.values())
+                    else:
+                        instantiated_relation = relation_class.from_r_trees(
+                            support=support, r_trees=r_trees, location_type=location_type, original_geometries=random_maps
+                        )
+                        values = instantiated_relation.parameters
+                        value_collection.append(values.coordinates(), values.values())
+
+                except Exception as e:
+                    warn(
+                        f"StaR Map encountered excpetion! "
+                        f"Relation {relation} for {location_type} will use default parameters. "
+                        f"Error was:\n{''.join(format_exception(e))}"
+                    )
+
+                    value_collection.append_with_default(
+                        support.coordinates(), relation_class.empty_map_parameters()
+                    )
+
+        self.fit(what)
+
+
