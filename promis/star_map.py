@@ -30,7 +30,7 @@ from sklearn.gaussian_process.kernels import RBF, WhiteKernel
 from sklearn.preprocessing import StandardScaler, normalize
 
 # ProMis
-from promis.geo import CartesianCollection, CartesianLocation, CartesianMap, RasterBand
+from promis.geo import CartesianCollection, CartesianLocation, CartesianMap, RasterBand, CartesianDeltaCollection
 from promis.logic.spatial import Depth, Distance, Over, Relation, DeltaRelation, MaxVelocity, Crosses
 
 
@@ -507,10 +507,8 @@ class StaRMap:
 class DeltaStaRMap(StaRMap):
     def __init__(self, target, uam, method = "linear", bearing: float = 0, speed: float = 1):
         super().__init__(target, uam, method)
-        self.bearing = bearing
-        self.speed = speed
 
-    def initialize(self, support: CartesianCollection, number_of_random_maps: int, logic: str):
+    def initialize(self, support: CartesianDeltaCollection, number_of_random_maps: int, logic: str):
         """Setup the StaRMap for a given set of support points, number of samples and logic.
 
         Args:
@@ -551,7 +549,7 @@ class DeltaStaRMap(StaRMap):
 
     def add_support_points(
         self,
-        support: CartesianCollection,
+        support: CartesianDeltaCollection,
         number_of_random_maps: int,
         what: dict[str, Iterable[str | None]] | None = None,
     ):

@@ -11,14 +11,14 @@ from scipy.stats import norm
 from shapely.strtree import STRtree
 
 # ProMis
-from promis.geo import CartesianCollection, CartesianLocation, CartesianMap, CartesianRasterBand
+from promis.geo import CartesianDeltaCollection, CartesianLocation, CartesianMap, CartesianRasterBand
 
 #: Helper to define derived relations within base class
 DerivedRelation = TypeVar("DerivedRelation", bound="DeltaRelation")
 
 
 class DeltaRelation(ABC):
-    """A spatial relation between points in space and typed map features.
+    """A spatial relation between points in space, bearing and speed and typed map features.
 
     Args:
         parameters: A CartesianCollection relating points with parameters
@@ -26,7 +26,7 @@ class DeltaRelation(ABC):
         location_type: The type of location this relates to, e.g., buildings or roads
     """
 
-    def __init__(self, parameters: CartesianCollection, location_type: str) -> None:
+    def __init__(self, parameters: CartesianDeltaCollection, location_type: str) -> None:
         # Setup attributes
         self.parameters = parameters
         self.location_type = location_type
@@ -140,9 +140,7 @@ class DeltaRelation(ABC):
     @classmethod
     def from_r_trees(
         cls,
-        support: CartesianCollection,
-        bearing: float,
-        speed: float,
+        support: CartesianDeltaCollection,
         r_trees: list[STRtree],
         location_type: str,
         original_geometries: list[CartesianMap],
@@ -165,18 +163,18 @@ class DeltaRelation(ABC):
         
 
         # Compute Over over support points
-        locations = support.to_cartesian_locations()
+        locations, bearings, speeds = support.to_cartesian_locations()
         statistical_moments = vstack(
             [
                 cls.compute_parameters(location, bearing, speed, r_trees, original_geometries)
-                for location in locations
+                for location, bearing, speed in zip(locations, bearings, speeds)
             ]
         )
 
         # Setup parameter collection and return relation
-        parameters = CartesianCollection(
+        parameters = CartesianDeltaCollection(
             support.origin, number_of_values=statistical_moments.shape[1]
         )
-        parameters.append(locations, statistical_moments)
+        parameters.append(locations, statistical_moments, bearings, speeds)
 
         return cls(parameters, location_type)
