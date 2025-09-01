@@ -26,7 +26,7 @@ class MaxVelocity(ScalarRelation):
 
     @staticmethod
     def compute_relation(
-        location: CartesianLocation, r_tree: STRtree, original_geometries: CartesianMap
+        location: CartesianLocation, r_tree: STRtree, original_geometries: CartesianMap, **kwargs
     ) -> float:
         index = r_tree.nearest(location.geometry)
         original_geo = original_geometries.features[index]

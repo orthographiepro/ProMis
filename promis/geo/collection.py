@@ -17,7 +17,7 @@ import smopy
 from matplotlib import pyplot as plt
 
 # Third Party
-from numpy import array, atleast_2d, concatenate, ndarray, repeat
+from numpy import array, atleast_2d, concatenate, ndarray, repeat, unique
 from numpy.typing import NDArray
 from pandas import DataFrame, concat
 from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
@@ -96,6 +96,17 @@ class Collection(ABC):
 
         location_columns = self.data.columns[:2]
         return self.data[location_columns].to_numpy()
+    
+    def unique_coordinates(self) -> NDArray[Any]:
+        """Unpack the unique location coordinates as numpy array.
+
+        Returns:
+            The indices of this Collection as numpy array
+        """
+
+        location_columns = self.data.columns[:2]
+        data = self.data[location_columns].to_numpy()
+        return unique(data, axis=0)
 
     def to_csv(self, path: str, mode: str = "w"):
         """Saves the collection as comma-separated values file.
@@ -120,7 +131,7 @@ class Collection(ABC):
         """
 
         assert len(coordinates) == values.shape[0], (
-            "Number of locations mismatched number of value vectors."
+            f"Number of locations {len(coordinates)} mismatched number of value vectors {values.shape}."
         )
 
         if isinstance(coordinates, ndarray):
@@ -230,7 +241,7 @@ class CartesianCollection(Collection):
         return east - west, north - south
 
     def to_cartesian_locations(self) -> list[CartesianLocation]:
-        coordinates = self.coordinates()
+        coordinates = self.unique_coordinates()
 
         locations = []
         for i in range(coordinates.shape[0]):

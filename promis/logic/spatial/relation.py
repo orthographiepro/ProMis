@@ -16,12 +16,12 @@ from typing import TypeVar
 from warnings import warn
 
 # Third Party
-from numpy import ndarray, array, clip, mean, sqrt, var, vstack
+from numpy import ndarray, array, clip, mean, sqrt, var, vstack, column_stack
 from scipy.stats import norm
 from shapely.strtree import STRtree
 
 # ProMis
-from promis.geo import CartesianCollection, CartesianLocation, CartesianMap, CartesianRasterBand
+from promis.geo import CartesianCollection, CartesianLocation, CartesianMap, CartesianRasterBand, DeltaCollection, CartesianDeltaCollection
 
 #: Helper to define derived relations within base class
 DerivedRelation = TypeVar("DerivedRelation", bound="Relation")
@@ -102,7 +102,7 @@ class Relation(ABC):
     @staticmethod
     @abstractmethod
     def compute_relation(
-        location: CartesianLocation, r_tree: STRtree, original_geometries: CartesianMap
+        location: CartesianLocation, r_tree: STRtree, original_geometries: CartesianMap, **kwargs
     ) -> float:
         """Compute the value of this Relation type for a specific location and map.
 
@@ -126,6 +126,7 @@ class Relation(ABC):
         location: CartesianLocation,
         r_trees: list[STRtree],
         original_geometries: list[CartesianMap],
+        **kwargs
     ) -> ndarray:
         """Compute the parameters of this Relation type for a specific location and set of maps.
 
@@ -139,7 +140,7 @@ class Relation(ABC):
         """
 
         relation_data = [
-            cls.compute_relation(location, r_tree, geometries)
+            cls.compute_relation(location, r_tree, geometries, **kwargs)
             for r_tree, geometries in zip(r_trees, original_geometries)
         ]
 
@@ -169,7 +170,7 @@ class Relation(ABC):
         # to maintain the efficient raster representation
 
         # Compute Over over support points
-        locations = support.to_cartesian_locations()
+        locations = CartesianCollection.to_cartesian_locations(support)
         statistical_moments = vstack(
             [
                 cls.compute_parameters(location, r_trees, original_geometries)
@@ -248,3 +249,58 @@ class ScalarRelation(Relation):
         )
 
         return f"{relation} ~ {distribution}.\n"
+    
+class DeltaRelation(Relation):
+    def __init__(self, parameters, location_type):
+        super().__init__(parameters, location_type)
+        assert isinstance(parameters, CartesianDeltaCollection)
+
+    @classmethod
+    def from_r_trees(
+        cls,
+        support: CartesianCollection,
+        r_trees: list[STRtree],
+        location_type: str,
+        original_geometries: list[CartesianMap],
+    ) -> DerivedRelation:
+        """Compute relation for a Cartesian collection of points and a set of R-trees.
+
+        Args:
+            support: The collection of Cartesian points to compute Over for
+            r_trees: Random variations of the features of a map indexible by an STRtree each
+            location_type: The type of features this relates to
+            original_geometries: The geometries indexed by the STRtrees
+
+        Returns:
+            The computed relation
+        """
+
+        # TODO if `support` is a RasterBand, we could make parameters a RasterBand as well
+        # to maintain the efficient raster representation
+        assert isinstance(support, CartesianDeltaCollection)
+        # Compute Over over support points
+        locations = support.to_cartesian_locations()
+        bearings = support.get_bearings()
+        speeds = support.get_speeds()
+
+        statistical_moments = vstack(
+            [
+                cls.compute_parameters(location, r_trees, original_geometries, bearing=bearing, speed=speed)
+                for location, bearing, speed in zip(locations, bearings, speeds)
+            ]
+        )
+
+        # Setup parameter collection and return relation
+        parameters = CartesianDeltaCollection(
+            support.origin, number_of_values=statistical_moments.shape[1]
+        )
+
+        states = column_stack((
+            array([loc.to_numpy() for loc in locations]).reshape(len(locations), 2),
+            bearings,
+            speeds,
+        ))
+        print(states)
+        parameters.append(states, statistical_moments)
+
+        return cls(parameters, location_type)

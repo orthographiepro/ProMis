@@ -17,14 +17,14 @@ import smopy
 from matplotlib import pyplot as plt
 
 # Third Party
-from numpy import array, atleast_2d, column_stack, ndarray, repeat, unique
+from numpy import hstack, zeros
 from numpy.typing import NDArray
-from pandas import DataFrame, concat, unique
-from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
+from pandas import DataFrame
+from scipy.interpolate import RegularGridInterpolator
 
 # ProMis
 from promis.geo.location import CartesianLocation, PolarLocation
-from promis.geo.collection import Collection
+from promis.geo.collection import Collection, CartesianCollection, PolarCollection
 
 
 class DeltaCollection(Collection):
@@ -74,16 +74,6 @@ class DeltaCollection(Collection):
         location_columns = self.data.columns[:2]
         return self.data[(self.data['bearing']==bearing) & (self.data['speed']==speed)][location_columns].to_numpy()
 
-    def all_coordinates(self) -> NDArray[Any]:
-        """Unpack the location coordinates in combination to bearing and speed as numpy array.
-
-        Returns:
-            The indices of this Collection as numpy array
-        """
-
-        location_columns = self.data.columns[:4]
-        return unique(self.data[location_columns]).to_numpy()
-
     def coordinates(self) -> NDArray[Any]:
         """Unpack the location coordinates in combination to bearing and speed as numpy array.
 
@@ -91,64 +81,28 @@ class DeltaCollection(Collection):
             The indices of this Collection as numpy array
         """
 
-        location_columns = self.data.columns[:2]
-        return unique(self.data[location_columns]).to_numpy()
+        location_columns = self.data.columns[:4]
+        return self.data[location_columns].to_numpy()
 
     def append(
         self,
         coordinates: NDArray[Any] | list[PolarLocation | CartesianLocation],
         values: NDArray[Any],
-        bearings: NDArray[Any],
-        speeds: NDArray[Any],
     ):
-        """Append location and associated value vectors to collection.
+        """Append location and associated value vectors to collection. Coordinates should either be 2 or 4 dimensional,
+        if 2D, bearing and speed are assumed to be 0.
 
         Args:
-            coordinates: A list of locations to append or matrix of coordinates
+            coordinates: A list of locations to append or matrix of coordinates.
             values: The associated values as 2D matrix, each row belongs to a single location
         """
 
-        assert len(coordinates) == values.shape[0] == len(bearings) == len(speeds), (
-            "Number of locations / bearings / speeds mismatched number of value vectors."
-        )
-        
-
-        if isinstance(coordinates, ndarray):
-            new_entries = column_stack([coordinates, bearings, speeds, values])
-        else:
-            new_entries = column_stack(
-                [array([[location.x, location.y] for location in coordinates]), bearings, speeds, values]
-            )
-
-        if self.data.empty:
-            self.data = DataFrame(new_entries, columns=self.data.columns)
-        else:
-            self.data = concat(
-                [self.data, DataFrame(new_entries, columns=self.data.columns)], ignore_index=True
-            )
-
-        # Reset basemap since new data is added
-        self.basemap = None
-
-    def append_with_default(
-        self,
-        coordinates: NDArray[Any] | list[PolarLocation | CartesianLocation],
-        value: NDArray[Any],
-        bearing: float,
-        speed: float,
-    ):
-        """Append location with a default value.
-
-        Args:
-            coordinates: A list of locations to append or matrix of coordinates
-            values: The default value to assign to all locations
-        """
-        l = len(coordinates)
-        self.append(coordinates, 
-                    values=repeat(atleast_2d(value), l, axis=0), 
-                    bearings=repeat([bearing], l, axis=0), 
-                    speeds=repeat([speed], l, axis=0),
-                )
+        if isinstance(coordinates, list):
+            coordinates = hstack([c.to_numpy() for c in coordinates]).T
+        if coordinates.shape[1] == 2:
+            coordinates = hstack((coordinates, zeros(coordinates.shape)))
+    
+        Collection.append(self, coordinates, values)
 
     def scatter(
         self, value_index: int = 0, bearing: float = None, speed: float = None,  plot_basemap=True, ax=None, zoom=16, **kwargs
@@ -183,10 +137,10 @@ class DeltaCollection(Collection):
     
 
     def get_bearings(self) -> NDArray[Any]:
-        return unique(self.data["bearing"].to_numpy())
+        return self.data["bearing"].to_numpy()
     
     def get_speeds(self) -> NDArray[Any]:
-        return unique(self.data["speed"].to_numpy())
+        return self.data["speed"].to_numpy()
 
 
 class CartesianDeltaCollection(DeltaCollection, CartesianCollection):
@@ -223,7 +177,7 @@ class CartesianDeltaCollection(DeltaCollection, CartesianCollection):
         for i in range(coordinates.shape[0]):
             locations.append(CartesianLocation(east=coordinates[i, 0], north=coordinates[i, 1]))
 
-        return locations, coordinates[:, 2], coordinates[:, 3]
+        return locations
 
     def to_polar(self) -> "PolarDeltaCollection":
         # Apply the inverse projection of the origin location
@@ -245,7 +199,7 @@ class CartesianDeltaCollection(DeltaCollection, CartesianCollection):
         return polar_collection
 
     def get_interpolator(self, method: str = "linear") -> Any:
-        """Get an interpolator for the data.
+        """Get an interpolator for the data. Assumes a grid structure of the data.
 
         Args:
             method: The interpolation method to use
@@ -254,16 +208,16 @@ class CartesianDeltaCollection(DeltaCollection, CartesianCollection):
             A callable interpolator function
         """
 
-        # Create interpolator
-        # TODO We'd ideally like to interpolate linearly within the support points,
-        # but with "nearest" outside of them.
-        match method:
-            case "linear":
-                return LinearNDInterpolator(self.coordinates(), self.values())
-            case "nearest":
-                return NearestNDInterpolator(self.coordinates(), self.values())
-            case _:
-                raise NotImplementedError(f'Interpolation method "{method}" not implemented')
+        print(self.data["v0"].unique())
+        # TODO link to grid class / remove assumption
+        grid_axes = [self.data[self.data.columns[i]].unique() for i in range(4)]
+        return RegularGridInterpolator(
+            grid_axes,
+            self.data[self.data.columns[4:]].to_numpy().reshape(
+                [len(grid_axes[i]) for i in range(len(grid_axes))] + [self.number_of_values]
+            ),
+            method=method,
+        )
 
 
 class PolarDeltaCollection(DeltaCollection, PolarCollection):

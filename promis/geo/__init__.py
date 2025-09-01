@@ -21,6 +21,7 @@ from promis.geo.map import CartesianMap, PolarMap
 from promis.geo.polygon import CartesianPolygon, PolarPolygon
 from promis.geo.raster_band import CartesianRasterBand, PolarRasterBand, RasterBand
 from promis.geo.route import CartesianRoute, PolarRoute
+from promis.geo.delta_grid import DeltaGrid
 
 # Type aliases
 CartesianGeometry: TypeAlias = CartesianLocation | CartesianMap | CartesianPolygon | CartesianRoute
@@ -49,4 +50,5 @@ __all__ = [
     "DeltaCollection",
     "CartesianDeltaCollection",
     "PolarDeltaCollection",
+    "DeltaGrid",
 ]

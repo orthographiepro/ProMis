@@ -42,7 +42,7 @@ class Depth(ScalarRelation):
 
     @staticmethod
     def compute_relation(
-        location: CartesianLocation, r_tree: STRtree, original_geometries: CartesianMap
+        location: CartesianLocation, r_tree: STRtree, original_geometries: CartesianMap, **kwargs
     ) -> float:
         nearest_geometry_idx = r_tree.nearest(location.geometry)
         nearest_geometry = original_geometries.features[nearest_geometry_idx]

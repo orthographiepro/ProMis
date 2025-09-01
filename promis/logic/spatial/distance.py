@@ -30,7 +30,7 @@ class Distance(ScalarRelation):
 
     @staticmethod
     def compute_relation(
-        location: CartesianLocation, r_tree: STRtree, original_geometries: CartesianMap
+        location: CartesianLocation, r_tree: STRtree, original_geometries: CartesianMap, **kwargs
     ) -> float:
         return location.geometry.distance(r_tree.geometries.take(r_tree.nearest(location.geometry)))
 

@@ -12,12 +12,12 @@
 from shapely.strtree import STRtree
 from shapely import LineString, Geometry
 
-import numpy as np
+from numpy import array, sin, cos
 
 # ProMis
 from promis.geo import CartesianLocation, CartesianMap
 
-from .delta_relation import DeltaRelation
+from .relation import DeltaRelation
 
 
 class Crosses(DeltaRelation):
@@ -26,9 +26,15 @@ class Crosses(DeltaRelation):
 
     @staticmethod
     def compute_relation(
-        location: CartesianLocation, bearing: float, speed: float, r_tree: STRtree, original_geometries: CartesianMap
+        location: CartesianLocation, r_tree: STRtree, original_geometries: CartesianMap, **kwargs
     ) -> float:
-        velocity = speed / 3.6 * np.array([np.sin(bearing, ), np.cos(bearing)]).reshape((2,1))  # m/s, 1s naive prognosis
+        # check signature
+        if not "speed" in kwargs and not "bearing" in kwargs:
+            raise KeyError(f"compute_relation called with insufficient kwargs. Expected 'bearing' and 'speed', got {kwargs}")
+        speed = kwargs["speed"]
+        bearing = kwargs["bearing"]
+
+        velocity = speed / 3.6 * array([sin(bearing), cos(bearing)]).reshape((2,1))  # m/s, 1s naive prognosis
         trajectory = LineString([location.geometry, (location + velocity).geometry])
         geometry = r_tree.geometries.take(r_tree.nearest(location.geometry)) 
         # no need to check for loc type as all geometries we get are previously filtered
