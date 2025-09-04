@@ -1,25 +1,25 @@
 """Sets up the ProMis package for installation."""
 
 #
-# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH
+# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH, Felix Divo, and contributors
 #
 # This file is part of ProMis and licensed under the BSD 3-Clause License.
 # You should have received a copy of the BSD 3-Clause License along with ProMis.
 # If not, see https://opensource.org/license/bsd-3-clause/.
 #
 
-# Standard library
 import re
+
 import setuptools
 
 # Find Promis version and author strings
-with open("promis/__init__.py", "r", encoding="utf8") as fd:
+with open("promis/__init__.py", encoding="utf8") as fd:
     content = fd.read()
     version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', content, re.MULTILINE).group(1)
     author = re.search(r'^__author__\s*=\s*[\'"]([^\'"]*)[\'"]', content, re.MULTILINE).group(1)
 
 # Import readme
-with open("README.md", "r", encoding="utf8") as readme:
+with open("README.md", encoding="utf8") as readme:
     long_description = readme.read()
 
 setuptools.setup(
@@ -37,13 +37,14 @@ setuptools.setup(
     },
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: BSD-3",
+        "License :: OSI Approved :: BSD License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     install_requires=[
         # general tools
         "rich",
+        "tqdm",
         # generic scientific
         "numpy",
         "scipy",
@@ -57,19 +58,25 @@ setuptools.setup(
         "shapely",
         "overpy",
         # probabilistic logic and modelling
+        "nflows",
+        "torch",
         "pyro-ppl",
         "pysdd",
-        "problog @ git+https://github.com/simon-kohaut/problog.git@dcproblog_develop",
+        "gpytorch",
         # plotting and visualization
         "fastapi[standard]",
         "graphviz",
         "seaborn",
         "smopy",
+        "ipywidgets",
+        # networking
+        "requests",
     ],
     extras_require={
         # Building the documentation locally with sphinx
         "doc": [
             "sphinx",
+            "nbsphinx",
             "sphinx-markdown-builder",
             "sphinx_rtd_theme",
             "sphinxcontrib-programoutput",
@@ -77,7 +84,7 @@ setuptools.setup(
         # Loading nautical chart data into ProMis
         # Requires GDAL to be installed on the system
         "nautical": [
-            "gdal"
+            "gdal",
         ],
         # Development tools for quality assurance
         "dev": [
@@ -86,8 +93,6 @@ setuptools.setup(
             "ruff",
             # dynamic code analysis
             "pytest",
-            "pytest-cov",
-            "pytest-sugar",
         ],
     },
 )

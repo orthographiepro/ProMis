@@ -1,7 +1,7 @@
 """This module contains a loader for spatial data from OpenStreetMaps (OSM)."""
 
 #
-# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH
+# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH, Felix Divo, and contributors
 #
 # This file is part of ProMis and licensed under the BSD 3-Clause License.
 # You should have received a copy of the BSD 3-Clause License along with ProMis.
@@ -18,7 +18,7 @@ from overpy import Overpass, Relation
 from overpy.exception import OverpassGatewayTimeout, OverpassTooManyRequests
 
 # ProMis
-from promis.geo import PolarLocation, PolarPolygon, PolarRoute, CartesianLocation
+from promis.geo import PolarLocation, PolarPolygon, PolarPolyLine, CartesianLocation
 from promis.loaders.spatial_loader import SpatialLoader
 from promis.geo.helpers import calculate_street_width
 
@@ -32,6 +32,7 @@ class OsmLoader(SpatialLoader):
         dimensions: tuple[float, float],
         feature_description: dict | None,
         polygonize_routes = False,
+        timeout: float = 5.0
     ):
         # Initialize Overpass API
         self.overpass_api = Overpass()
@@ -39,9 +40,9 @@ class OsmLoader(SpatialLoader):
 
         self.polygonize_routes = polygonize_routes
         if feature_description is not None:
-            self.load(feature_description)
+            self.load(feature_description, timeout)
 
-    def load(self, feature_description: dict[str, str]) -> None:
+    def load(self, feature_description: dict[str, str], timeout: float = 5.0) -> None:
         for location_type, osm_filter in feature_description.items():
             if self.polygonize_routes:
                 self._load_routes_polygonized(osm_filter, location_type)
@@ -54,14 +55,17 @@ class OsmLoader(SpatialLoader):
         filters: str,
         name: str,
         timeout: float = 5.0,
-    ) -> None:
-        """Loads all selected ways from OSM as PolarRoute into features.
+    ) -> list[PolarPolyLine]:
+        """Loads all selected ways from OSM as PolarPolyLine.
 
         Args:
             tag: The tag that way and relation will be qualitfied with, required to
                 contain the quotation marks for Overpass, e.g. "leisure"="park" or "building"
             bounding_box: The bounding box for Overpass
             location_type: The type to assign to each loaded route
+
+        Returns:
+            A list of all found map features as PolarPolyLines
         """
 
         # Compute bounding box and format it for Overpass
@@ -80,7 +84,7 @@ class OsmLoader(SpatialLoader):
                 )
 
                 self.features += [
-                    PolarRoute(
+                    PolarPolyLine(
                         [
                             PolarLocation(
                                 latitude=float(node.lat), longitude=float(node.lon), location_type=name
@@ -105,8 +109,8 @@ class OsmLoader(SpatialLoader):
         filters: str,
         name: str,
         timeout: float = 5.0,
-    ) -> None:
-        """Loads all selected ways from OSM as PolarPolygon into features.
+    ) -> list[PolarPolyLine]:
+        """Loads all selected ways from OSM as PolarPolyLine.
 
         Args:
             tag: The tag that way and relation will be qualitfied with, required to
@@ -120,7 +124,7 @@ class OsmLoader(SpatialLoader):
         bounding_box = f"({south:.4f}, {west:.4f}, {north:.4f}, {east:.4f})"
 
         # Load data via Overpass
-        routes: list[PolarRoute] = []
+        routes: list[PolarPolyLine] = []
         while True:
             try:
                 result = self.overpass_api.query(
@@ -132,7 +136,7 @@ class OsmLoader(SpatialLoader):
                 )
 
                 routes += [
-                    PolarRoute(
+                    PolarPolyLine(
                         [
                             PolarLocation(
                                 latitude=float(node.lat), longitude=float(node.lon), location_type=name
@@ -191,6 +195,8 @@ class OsmLoader(SpatialLoader):
                 contain the quotation marks for Overpass, e.g. "leisure"="park" or "building"
             bounding_box: The bounding box for Overpass
             location_type: The type to assign to each loaded route
+        Returns:
+            A list of all found map features as PolarPolyLines
         """
 
         # Compute bounding box and format it for Overpass

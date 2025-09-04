@@ -17,6 +17,14 @@ Resources:
         - The program QGIS is very helpful because it can open S-57 files visually.
 """
 
+#
+# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH, Felix Divo, and contributors
+#
+# This file is part of ProMis and licensed under the BSD 3-Clause License.
+# You should have received a copy of the BSD 3-Clause License along with ProMis.
+# If not, see https://opensource.org/license/bsd-3-clause/.
+#
+
 # Python standard
 import os
 import os.path
@@ -26,7 +34,7 @@ from functools import partial
 from hashlib import sha1
 from multiprocessing import Pool
 from pathlib import Path
-from warnings import catch_warnings, simplefilter, warn
+from warnings import catch_warnings, simplefilter
 
 # Third Party
 from numpy import array
@@ -38,12 +46,12 @@ from promis.geo import (
     CartesianGeometry,
     CartesianLocation,
     CartesianPolygon,
-    CartesianRoute,
+    CartesianPolyLine,
     Geospatial,
     PolarGeometry,
     PolarLocation,
     PolarPolygon,
-    PolarRoute,
+    PolarPolyLine,
 )
 from promis.loaders.spatial_loader import SpatialLoader
 
@@ -57,10 +65,6 @@ try:
         from osgeo import gdal, ogr
 except ImportError as _error:  # pragma: no cover
     _OSGEO_PRESENT = False
-    warn(
-        "Could not import package osgeo. If you woud like to load nautical charts, please install it as described in the README. "
-        f"Error was: {_error}"
-    )
     del _error
 else:
     _OSGEO_PRESENT = True
@@ -91,7 +95,10 @@ class S57ChartHandler:
 
     def __init__(self):
         if not _OSGEO_PRESENT:  # pragma: no cover
-            raise ImportError('the "osgeo" package must be installed for this handler to function')
+            raise ImportError(
+                "Could not import package osgeo. "
+                "If you woud like to load nautical charts, please install it as described in the README."
+            )
 
     #: This maps layer names to the corresponding parameters for S57ChartHandler._create_obstacle(...)
     #: These are not all possible objects but merely the ones which are trivial to read out.
@@ -275,7 +282,7 @@ class S57ChartHandler:
                 points = [
                     PolarLocation(latitude=lat, longitude=lon) for lon, lat in geometry.GetPoints()
                 ]
-                yield PolarRoute(points, name=name, location_type=location_type), feature_id
+                yield PolarPolyLine(points, name=name, location_type=location_type), feature_id
 
             case ogr.wkbMultiLineString:
                 for i in range(geometry.GetGeometryCount()):
@@ -283,7 +290,7 @@ class S57ChartHandler:
                         PolarLocation(latitude=lat, longitude=lon)
                         for lon, lat in geometry.GetGeometryRef(i).GetPoints()
                     ]
-                    yield PolarRoute(points, name=name, location_type=location_type), feature_id
+                    yield PolarPolyLine(points, name=name, location_type=location_type), feature_id
 
             case ogr.wkbPolygon:
                 outer_ring = geometry.GetGeometryRef(0)
@@ -369,7 +376,8 @@ def _from_shapely(
     """Constructs an appropriate geometry from a Shapely geometry object.
 
     Args:
-        shapely_geometry: The geometry to convert. Supported types are Point, LineString, Polygon, and MultiPolygon.
+        shapely_geometry: The geometry to convert. Supported types are Point, LineString,
+            Polygon, and MultiPolygon.
         copy_metadata_from: The geometry to copy metadata from, or None to not copy metadata.
 
     Returns:
@@ -387,7 +395,7 @@ def _from_shapely(
                 identifier=reference.identifier,
             )
         case LineString(coords=coords):
-            yield CartesianRoute.from_numpy(
+            yield CartesianPolyLine.from_numpy(
                 array(coords),
                 name=reference.name,
                 location_type=reference.location_type,

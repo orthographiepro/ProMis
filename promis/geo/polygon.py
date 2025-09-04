@@ -2,7 +2,7 @@
 coordinates using shapely."""
 
 #
-# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH
+# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH, Felix Divo, and contributors
 #
 # This file is part of ProMis and licensed under the BSD 3-Clause License.
 # You should have received a copy of the BSD 3-Clause License along with ProMis.
@@ -450,7 +450,7 @@ class CartesianPolygon(Polygon):
 
     def distance(self, other: Any) -> float:
         return self.geometry.distance(other.geometry)
-    
+
     def send_to_gui(self, url = "http://localhost:8000/add_geojson", timeout = 1):
         raise NotImplementedError("Cartesian Polygon does not have geospatial feature to send to gui!")
 

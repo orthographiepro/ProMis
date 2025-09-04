@@ -10,7 +10,7 @@ References:
 """
 
 #
-# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH
+# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH, Felix Divo, and contributors
 #
 # This file is part of ProMis and licensed under the BSD 3-Clause License.
 # You should have received a copy of the BSD 3-Clause License along with ProMis.
@@ -462,7 +462,7 @@ def translate_numpy(
         This is already provided in an object-oriented fashion by
         - :meth:`promis.geo.location.PolarLocation.translate`
         - :meth:`promis.geo.polygon.PolarPolygon.translate`
-        - :meth:`promis.geo.route.PolarRoute.translate`
+        - :meth:`promis.geo.route.PolarPolyLine.translate`
 
     Args:
         coordinates: the coordinates as a numpy array with dimensions ``(number of points, 2)``,

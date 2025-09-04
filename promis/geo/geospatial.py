@@ -1,7 +1,7 @@
 """This module contains base classes for geospatial objects like polygons, routes and points."""
 
 #
-# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH
+# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH, Felix Divo, and contributors
 #
 # This file is part of ProMis and licensed under the BSD 3-Clause License.
 # You should have received a copy of the BSD 3-Clause License along with ProMis.
@@ -123,7 +123,7 @@ class Geospatial(ABC):
                 **kwargs,
             ),
         )
-    
+
     def send_to_gui(self, url: str ="http://localhost:8000/add_geojson", timeout: int = 1):
         """Send an HTTP POST-request to the GUI backend.
 

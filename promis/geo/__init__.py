@@ -1,7 +1,7 @@
 """The ProMis geo package represents spatial data in Cartesian and polar coordinates."""
 
 #
-# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH
+# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH, Felix Divo, and contributors
 #
 # This file is part of ProMis and licensed under the BSD 3-Clause License.
 # You should have received a copy of the BSD 3-Clause License along with ProMis.
@@ -16,16 +16,16 @@ from promis.geo.collection import CartesianCollection, Collection, PolarCollecti
 from promis.geo.delta_collection import CartesianDeltaCollection, DeltaCollection, PolarDeltaCollection
 from promis.geo.geospatial import Geospatial
 from promis.geo.helpers import Direction
-from promis.geo.location import CartesianLocation, PolarLocation
-from promis.geo.map import CartesianMap, PolarMap
+from promis.geo.location import CartesianLocation, Location, PolarLocation
+from promis.geo.map import CartesianMap, Map, PolarMap
 from promis.geo.polygon import CartesianPolygon, PolarPolygon
+from promis.geo.polyline import CartesianPolyLine, PolarPolyLine, PolyLine
 from promis.geo.raster_band import CartesianRasterBand, PolarRasterBand, RasterBand
-from promis.geo.route import CartesianRoute, PolarRoute
 from promis.geo.delta_grid import DeltaGrid
 
 # Type aliases
-CartesianGeometry: TypeAlias = CartesianLocation | CartesianMap | CartesianPolygon | CartesianRoute
-PolarGeometry: TypeAlias = PolarLocation | PolarMap | PolarPolygon | PolarRoute
+CartesianGeometry: TypeAlias = CartesianLocation | CartesianMap | CartesianPolygon | CartesianPolyLine
+PolarGeometry: TypeAlias = PolarLocation | PolarMap | PolarPolygon | PolarPolyLine
 
 
 __all__ = [
@@ -36,19 +36,22 @@ __all__ = [
     "CartesianMap",
     "CartesianPolygon",
     "CartesianRasterBand",
-    "RasterBand",
-    "CartesianRoute",
+    "CartesianPolyLine",
     "Direction",
     "Geospatial",
+    "Location",
+    "Map",
     "PolarCollection",
     "PolarGeometry",
     "PolarLocation",
     "PolarMap",
     "PolarPolygon",
     "PolarRasterBand",
-    "PolarRoute",
     "DeltaCollection",
     "CartesianDeltaCollection",
     "PolarDeltaCollection",
     "DeltaGrid",
+    "PolarPolyLine",
+    "PolyLine",
+    "RasterBand",
 ]

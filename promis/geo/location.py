@@ -2,7 +2,7 @@
 geospatial locations in WGS84 and local coordinates."""
 
 #
-# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH
+# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH, Felix Divo, and contributors
 #
 # This file is part of ProMis and licensed under the BSD 3-Clause License.
 # You should have received a copy of the BSD 3-Clause License along with ProMis.
@@ -171,6 +171,12 @@ class Location(Geospatial):
             )
             for sample in self.distribution.sample(number_of_samples).T
         ]
+
+    def __repr__(self) -> str:
+        return (
+            f"Location(x={self.x},"
+            f" y={self.y}{self._repr_extras})"
+        )
 
 
 class PolarLocation(Location):
@@ -401,7 +407,7 @@ class CartesianLocation(Location):
 
     def distance(self, other: Any) -> float:
         return cast(float, self.geometry.distance(other.geometry))
-    
+
     def send_to_gui(self, url = "http://localhost:8000/add_geojson", timeout = 1):
         raise NotImplementedError("Cartesian Location does not have geospatial feature to send to gui!")
 
