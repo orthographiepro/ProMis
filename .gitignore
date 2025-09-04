@@ -279,3 +279,5 @@ dist
 examples/**/*.gif
 examples/**/*.mp4
 examples/cofi-exports/**
+
+data
