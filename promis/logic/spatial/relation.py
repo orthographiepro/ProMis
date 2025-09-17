@@ -21,7 +21,7 @@ from scipy.stats import norm
 from shapely.strtree import STRtree
 
 # ProMis
-from promis.geo import CartesianCollection, CartesianLocation, CartesianMap, CartesianRasterBand, DeltaCollection, CartesianDeltaCollection
+from promis.geo import CartesianCollection, CartesianLocation, CartesianMap, CartesianRasterBand, CartesianDeltaCollection
 
 #: Helper to define derived relations within base class
 DerivedRelation = TypeVar("DerivedRelation", bound="Relation")

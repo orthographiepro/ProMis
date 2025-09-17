@@ -22,7 +22,7 @@ from numpy import array
 from numpy.typing import NDArray
 
 # ProMis
-from promis.geo import CartesianCollection, CartesianMap, CartesianDeltaCollection
+from promis.geo import CartesianCollection, CartesianDeltaCollection, CartesianMap, Collection
 from promis.logic.spatial import Depth, Distance, Over, Relation, MaxVelocity, Crosses
 
 
@@ -257,7 +257,7 @@ class StaRMap:
             return array([relation_class.empty_map_parameters()] * coordinates.shape[0])
 
         try:
-            collection = CartesianCollection(self.uam.origin)
+            collection = self._make_collection(self.uam.origin)
             collection.append_with_default(coordinates, 0.0)
 
             return relation_class.from_r_trees(
@@ -302,7 +302,7 @@ class StaRMap:
 
                 if location_type not in self.relations[relation].keys():
                     self.relations[relation][location_type] = self.relation_name_to_class(relation)(
-                        CartesianCollection(self.uam.origin, 2),
+                        self._make_collection(self.uam.origin, 2),
                         location_type
                     )
 
@@ -312,6 +312,10 @@ class StaRMap:
                     self._compute_parameters(coordinates, relation, location_type, r_trees, random_maps)
                 )
 
+    @staticmethod
+    def _make_collection(origin, number_of_values=1) -> Collection:
+        return CartesianCollection(origin, number_of_values)
+
 class DeltaStaRMap(StaRMap):
     def __init__(self, uam):
         super().__init__(uam)
@@ -319,13 +323,14 @@ class DeltaStaRMap(StaRMap):
             "crosses": {},
         })
 
-
     @staticmethod
     def relation_name_to_class(relation: str) -> Relation:
-        # Keep in sync with clear_relations()
         match relation:
             case "crosses":
                 return Crosses
             case _:
                 return StaRMap.relation_name_to_class(relation)
-                
+
+    @staticmethod
+    def _make_collection(origin, number_of_values=1) -> Collection:
+        return CartesianDeltaCollection(origin, number_of_values)

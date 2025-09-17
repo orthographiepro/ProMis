@@ -12,7 +12,7 @@
 from shapely.strtree import STRtree
 from shapely import LineString, Geometry
 
-from numpy import array, sin, cos
+from numpy import array, sin, cos, pi
 
 # ProMis
 from promis.geo import CartesianLocation, CartesianMap
@@ -32,7 +32,7 @@ class Crosses(DeltaRelation):
         if not "speed" in kwargs and not "bearing" in kwargs:
             raise KeyError(f"compute_relation called with insufficient kwargs. Expected 'bearing' and 'speed', got {kwargs}")
         speed = kwargs["speed"]
-        bearing = kwargs["bearing"]
+        bearing = kwargs["bearing"] / 180 * pi
 
         velocity = speed / 3.6 * array([sin(bearing), cos(bearing)]).reshape((2,1))  # m/s, 1s naive prognosis
         trajectory = LineString([location.geometry, (location + velocity).geometry])

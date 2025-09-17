@@ -20,7 +20,6 @@ from promis.geo import CartesianCollection
 from promis.logic import Solver
 from promis.star_map import StaRMap
 
-
 class ProMis:
     """The ProMis engine to create Probabilistic Mission Landscapes."""
 
@@ -92,6 +91,7 @@ class ProMis:
                         relation = relations[relation_type][location_type]
                         program += relation.index_to_distributional_clause(batch_index)
 
+                program += self._generate_state_info(batch_index, evaluation_points)
                 program += queries[batch_index]
 
             # Add program to collection
@@ -183,3 +183,21 @@ class ProMis:
     @staticmethod
     def _run_inference(solver: Solver) -> list[float]:
         return solver.inference()
+
+    @staticmethod
+    def _generate_state_info(index: int, evaluation_points: CartesianCollection) -> str:
+        """Produces the Problog-facts describing the given state.
+        For a column named "speed" with the value 30, the created fact would be "state_speed(30)"
+
+        Args:
+            index (int): which entry of evaluation points to use
+            evaluation_points (CartesianCollection): the data on all states
+
+        Returns:
+            str: The Problog facts as a string
+        """
+        state = evaluation_points.data.iloc[index]
+        return "\n".join([
+            f"state_{evaluation_points.data.columns.iloc[i]}(x_{index}, {state[i]})."
+            for i in range(len(state) - evaluation_points.number_of_values)
+        ])+"\n"

@@ -1,7 +1,7 @@
 """This module contains a class for handling a collection of spatially referenced data."""
 
 #
-# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH
+# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH, Felix Divo, and contributors
 #
 # This file is part of ProMis and licensed under the BSD 3-Clause License.
 # You should have received a copy of the BSD 3-Clause License along with ProMis.
@@ -9,15 +9,12 @@
 #
 
 # Standard Library
-from abc import ABC
-from pickle import dump, load
 from typing import Any
 
-import smopy
 from matplotlib import pyplot as plt
 
 # Third Party
-from numpy import hstack, zeros
+from numpy import hstack, zeros, repeat, column_stack
 from numpy.typing import NDArray
 from pandas import DataFrame
 from scipy.interpolate import RegularGridInterpolator
@@ -101,11 +98,15 @@ class DeltaCollection(Collection):
             coordinates = hstack([c.to_numpy() for c in coordinates]).T
         if coordinates.shape[1] == 2:
             coordinates = hstack((coordinates, zeros(coordinates.shape)))
+        if coordinates.shape[0] % values.shape[0] == 0:
+            coordinates = coordinates[:values.shape[0]]
+
+        # TODO solve elegantly without preprocessing
     
         Collection.append(self, coordinates, values)
 
     def scatter(
-        self, value_index: int = 0, bearing: float = None, speed: float = None,  plot_basemap=True, ax=None, zoom=16, **kwargs
+        self, value_index: int = 0, bearing: float = None, speed: float = None,  plot_basemap=True, ax=None, zoom=16, method="linear", **kwargs
     ):
         """Create a scatterplot of this Collection.
 
@@ -116,6 +117,8 @@ class DeltaCollection(Collection):
             zoom: The zoom level of the OSM basemap, default 16
             **kwargs: Args passed to the matplotlib scatter function
         """
+        if value_index >= self.number_of_values:
+            raise ValueError(f"Value index {value_index} too large for data with {self.number_of_values} values")
 
         # Would cause circular import if done at module scope
         from promis.loaders import SpatialLoader
@@ -131,8 +134,19 @@ class DeltaCollection(Collection):
             ax.imshow(self.basemap, extent=self.extent())
 
         # Scatter collection data
-        coordinates = self.coordinates_for(bearing, speed)
-        colors = self.values_for(bearing, speed)[:, value_index].ravel()
+        unique_locations = self.unique_coordinates()
+        coordinates = column_stack((
+            unique_locations[:, 0],
+            unique_locations[:, 1],
+            repeat(bearing, unique_locations.shape[0]),
+            repeat(speed, unique_locations.shape[0]),
+        ))
+        interpolate = self.get_interpolator(method=method)
+        colors = interpolate(coordinates)
+
+        if self.number_of_values > 1:
+            colors = colors[:, value_index].ravel()
+
         return ax.scatter(coordinates[:, 0], coordinates[:, 1], c=colors, **kwargs)
     
 
@@ -208,15 +222,18 @@ class CartesianDeltaCollection(DeltaCollection, CartesianCollection):
             A callable interpolator function
         """
 
-        print(self.data["v0"].unique())
         # TODO link to grid class / remove assumption
         grid_axes = [self.data[self.data.columns[i]].unique() for i in range(4)]
+        values = self.data[self.data.columns[4:]].to_numpy().reshape(
+                [len(grid_axes[i]) for i in range(len(grid_axes))] + [self.number_of_values],
+                order="F",
+        )
         return RegularGridInterpolator(
             grid_axes,
-            self.data[self.data.columns[4:]].to_numpy().reshape(
-                [len(grid_axes[i]) for i in range(len(grid_axes))] + [self.number_of_values]
-            ),
+            values,
             method=method,
+            bounds_error=False,
+            fill_value=None,
         )
 
 
