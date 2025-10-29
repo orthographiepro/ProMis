@@ -23,7 +23,7 @@ from numpy.typing import NDArray
 
 # ProMis
 from promis.geo import CartesianCollection, CartesianDeltaCollection, CartesianMap, Collection
-from promis.logic.spatial import Depth, Distance, Over, Relation, MaxVelocity, Crosses
+from promis.logic.spatial import Depth, Distance, Over, Relation, MaxVelocity, Crosses, DiscreteRelation
 
 
 class StaRMap:
@@ -165,18 +165,17 @@ class StaRMap:
             full_pattern = rf"({name})\(X{relates_to}\)"
 
             for match in finditer(full_pattern, logic):
-                match arity:
-                    case 1:
-                        raise Exception(
-                            "Arity 1 is not supported because it always needs a location type"
-                        )
-                    case 2:
+                if arity == 1:
+                    raise Exception(
+                        "Arity 1 is not supported because it always needs a location type"
+                    )
+                elif arity in [2, 3]:
                         location_type = match.group(2)
                         if location_type[0] in "'\"":  # Remove quotes
                             location_type = location_type[1:-1]
                         relations[name].add(location_type)
-                    case _:
-                        raise Exception(f"Only arity 2 is supported, but got {arity}")
+                else:
+                    raise Exception(f"Only arity 2 is supported, but got {arity}")
 
         return relations
 
@@ -260,9 +259,18 @@ class StaRMap:
             collection = self._make_collection(self.uam.origin)
             collection.append_with_default(coordinates, 0.0)
 
-            return relation_class.from_r_trees(
+            initialized_relation = relation_class.from_r_trees(
                 collection, r_trees, location_type, original_geometries=random_maps
-            ).parameters.values()
+            )
+
+            if issubclass(relation_class, DiscreteRelation):
+
+                print("cases:", initialized_relation.cases, self.relations[relation][location_type].parameters.data.columns)
+                self.relations[relation][location_type].set_cases(initialized_relation.cases)
+                print("cases:", initialized_relation.cases, self.relations[relation][location_type].parameters.data.columns)
+
+            print(initialized_relation.parameters.data.head())
+            return initialized_relation.parameters.values()
 
         except Exception as e:
             warn(
@@ -305,11 +313,15 @@ class StaRMap:
                         self._make_collection(self.uam.origin, 2),
                         location_type
                     )
-
+                #TODO hier die values entsprechend der Rückgabe von compute anpassen
+                vals = self._compute_parameters(coordinates, relation, location_type, r_trees, random_maps)
+                print(vals.shape, vals)
                 # Update collection of sample points
+
+                print(coordinates.shape, vals.shape)
                 self.relations[relation][location_type].parameters.append(
                     coordinates,
-                    self._compute_parameters(coordinates, relation, location_type, r_trees, random_maps)
+                    vals, 
                 )
 
     @staticmethod

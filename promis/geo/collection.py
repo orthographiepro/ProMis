@@ -467,11 +467,9 @@ class CartesianCollection(Collection):
             target = deepcopy(other)
 
         # Expand or reduce target to take up the same number of value columns
-        number_of_coordinates = len(self.data.columns) - self.number_of_values
-        while len(target.data.columns) < len(self.data.columns):
-            target.data[f"v{len(target.data.columns) - number_of_coordinates}"] = 0.0
-        while len(target.data.columns) > len(self.data.columns):
-            del target.data[f"v{len(target.data.columns) - number_of_coordinates - 1}"]
+        number_of_coordinates = self.data.columns.to_list().index("v0")
+        
+        target.data = target.data.reindex(columns=self.data.columns, fill_value=0.0)
 
         target.number_of_values = self.number_of_values
 

@@ -225,7 +225,7 @@ class CartesianDeltaCollection(DeltaCollection, CartesianCollection):
         # TODO link to grid class / remove assumption
         grid_axes = [self.data[self.data.columns[i]].unique() for i in range(4)]
         values = self.data[self.data.columns[4:]].to_numpy().reshape(
-                [len(grid_axes[i]) for i in range(len(grid_axes))] + [self.number_of_values],
+                [len(grid_axes[i]) for i in range(len(grid_axes))] + [len(self.data.columns) - 4],
                 order="F",
         )
         return RegularGridInterpolator(

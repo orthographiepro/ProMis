@@ -11,18 +11,25 @@
 # Geometry
 from shapely.strtree import STRtree
 
+from numpy import max, sum
+from pandas import isna
+
 # ProMis
-from promis.geo import CartesianLocation, CartesianMap, CartesianCollection
-from promis.geo.route import Route
-from promis.geo.polygon import Polygon
+from promis.geo import CartesianLocation, CartesianMap
 
-from .relation import ScalarRelation
+from .relation import DiscreteRelation
 
+LIMIT = -1
 
 # TODO only nearest neighbor 
-class MaxVelocity(ScalarRelation):
-    def __init__(self, parameters: CartesianCollection, location_type: str) -> None:
-        super().__init__(parameters, location_type, problog_name="maxspeed")
+class MaxVelocity(DiscreteRelation):
+    def index_to_distributional_clause(self, index: int) -> str:
+        data = self.parameters.data
+
+        return "\n".join([
+            f"{data['p'+str(case)][index]}::maxspeed(x_{index}, {self.location_type}, {case})."
+            for case in self.cases if not isna(data['p'+str(case)][index])
+            ])+"\n"
 
     @staticmethod
     def compute_relation(
@@ -31,13 +38,24 @@ class MaxVelocity(ScalarRelation):
         index = r_tree.nearest(location.geometry)
         original_geo = original_geometries.features[index]
         if "maxspeed" not in original_geo.tags or not location.geometry.within(r_tree.geometries.take(index)):
-            return -1
+            return LIMIT
         return int(original_geo.tags["maxspeed"])
+    
+    # unneeded
+    @classmethod
+    def _moment_functions(cls):
+        """note that these are not technically moments, especially not mean / variance"""
+        return max, cls._prob_max
+    #unneeded
+    @staticmethod
+    def _prob_max(data, axis):
+        """Count, how often the maximum value appears in data"""
+        return sum(data == max(data, axis=axis), axis=axis) / len(data)
 
     @staticmethod
     def empty_map_parameters() -> list[float]:
-        return [0.0, 0.25]
+        return [LIMIT, 1]
 
     @staticmethod
     def arity() -> int:
-        return 2
+        return 3

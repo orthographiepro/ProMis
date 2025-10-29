@@ -16,7 +16,8 @@ from typing import TypeVar
 from warnings import warn
 
 # Third Party
-from numpy import ndarray, array, clip, mean, sqrt, var, vstack, column_stack
+from numpy import ndarray, array, clip, mean, sqrt, var, vstack, column_stack, unique
+from pandas import DataFrame
 from scipy.stats import norm
 from shapely.strtree import STRtree
 
@@ -143,8 +144,11 @@ class Relation(ABC):
             cls.compute_relation(location, r_tree, geometries, **kwargs)
             for r_tree, geometries in zip(r_trees, original_geometries)
         ]
-
-        return array([mean(relation_data, axis=0), var(relation_data, axis=0)]).T
+        return array([f(relation_data, axis=0) for f in cls._moment_functions()]).T
+    
+    @classmethod
+    def _moment_functions(cls) -> tuple:
+        return mean, var
 
     @classmethod
     def from_r_trees(
@@ -186,6 +190,77 @@ class Relation(ABC):
 
         return cls(parameters, location_type)
 
+class DiscreteRelation(Relation):
+    def __init__(self, parameters, location_type, cases = []):
+        super().__init__(parameters, location_type)
+        self.cases = cases
+
+    @classmethod
+    def compute_parameters(
+        cls,
+        location: CartesianLocation,
+        r_trees: list[STRtree],
+        original_geometries: list[CartesianMap],
+        **kwargs
+    ) -> dict:
+        """Compute the parameters of this Relation type for a specific location and set of maps.
+
+        Args:
+            location: The location to evaluate in Cartesian coordinates
+            r_trees: The set of generated maps represented as r-tree
+            original_geometries: The geometries indexed by the STRtrees
+
+        Returns:
+            A dictionary that holds the probability of each value in the samples
+        """
+
+        relation_data = array([
+            cls.compute_relation(location, r_tree, geometries, **kwargs)
+            for r_tree, geometries in zip(r_trees, original_geometries)
+        ])
+        as_dict = {"v0": mean(relation_data), "v1": var(relation_data)}
+        as_dict |= { 'p'+str(val): (sum(relation_data == val) / len(relation_data)) for val in unique(relation_data)} 
+        return as_dict      
+
+    @classmethod
+    def from_r_trees(
+        cls,
+        support: CartesianCollection,
+        r_trees: list[STRtree],
+        location_type: str,
+        original_geometries: list[CartesianMap],
+    ) -> DerivedRelation:
+        locations = CartesianCollection.to_cartesian_locations(support)
+
+        distributions_per_location = [
+            {"east": location.east, "north": location.north, 
+            } |  # ugly hardcode
+            cls.compute_parameters(location, r_trees, original_geometries)
+            for location in locations
+        ]
+        # Setup parameter collection and return relation
+        parameters = CartesianCollection(
+            support.origin, number_of_values=2
+        )
+        parameters.data = DataFrame(distributions_per_location)
+        parameters.data.fillna(0.0, inplace=True)
+        return cls(parameters, location_type, [case[1:] for case in parameters.data.columns[4:]])
+    
+    @property
+    def case_values(self):
+        return self.cases
+    
+    @property
+    def case_col_labels(self):
+        return ["p" + str(case) for case in self.cases]
+
+
+    def set_cases(self, cases):
+        self.cases = cases
+        self.parameters.data = self.parameters.data.reindex(
+            columns=self.parameters.data.columns[:6].to_list() + ["p" + str(case) for case in cases],
+            fill_value=0.0,
+        )
 
 class ScalarRelation(Relation):
     """The relation of a scalar with a Gaussian distribution.

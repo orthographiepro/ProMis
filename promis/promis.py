@@ -18,6 +18,7 @@ from rich.progress import track
 # ProMis
 from promis.geo import CartesianCollection
 from promis.logic import Solver
+from promis.logic.spatial import DiscreteRelation
 from promis.star_map import StaRMap
 
 class ProMis:
@@ -67,7 +68,9 @@ class ProMis:
             for location_type in relations[relation_type].keys():
                 relation = relations[relation_type][location_type]
                 relation.parameters = relation.parameters.into(
-                    evaluation_points, interpolation_method, in_place=False
+                    evaluation_points, 
+                    interpolation_method if not isinstance(relation, DiscreteRelation) else "nearest",
+                    in_place=False
                 )
 
         # For each point in the target CartesianCollection, we need to run a query
@@ -198,6 +201,6 @@ class ProMis:
         """
         state = evaluation_points.data.iloc[index]
         return "\n".join([
-            f"state_{evaluation_points.data.columns.iloc[i]}(x_{index}, {state[i]})."
+            f"state_{evaluation_points.data.columns[i]}(x_{index}, {state[i]})."
             for i in range(len(state) - evaluation_points.number_of_values)
         ])+"\n"

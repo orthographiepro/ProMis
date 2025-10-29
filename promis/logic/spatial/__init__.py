@@ -12,7 +12,7 @@
 from promis.logic.spatial.depth import Depth
 from promis.logic.spatial.distance import Distance
 from promis.logic.spatial.over import Over
-from promis.logic.spatial.relation import Relation, DeltaRelation
+from promis.logic.spatial.relation import Relation, DeltaRelation, DiscreteRelation
 from promis.logic.spatial.max_velocity import MaxVelocity
 from promis.logic.spatial.crosses import Crosses
 
