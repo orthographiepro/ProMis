@@ -155,14 +155,21 @@ class OsmLoader(SpatialLoader):
             except AttributeError:
                 break
             else:
-                buffers_tags = [
+                linestring_tags = [
                     (
-                        LineString([loc.to_cartesian(self.origin).to_numpy() for loc in route.locations])
-                        .buffer(calculate_street_width(route) / 2),
-                        route.tags,
+                        LineString([loc.to_cartesian(self.origin).to_numpy() for loc in route.locations]),
+                        route.tags | {"calculated_width": calculate_street_width(route)},
                     )
                     for route in routes
                 ]
+                buffers_tags = [
+                    (
+                        line.buffer(tags["calculated_width"] / 2), 
+                        tags | {"line": line},
+                    )
+                    for line, tags in linestring_tags
+                ]
+
                 self.features += [
                     PolarPolygon(
                         locations=[

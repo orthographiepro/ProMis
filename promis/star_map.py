@@ -23,7 +23,7 @@ from numpy.typing import NDArray
 
 # ProMis
 from promis.geo import CartesianCollection, CartesianDeltaCollection, CartesianMap, Collection
-from promis.logic.spatial import Depth, Distance, Over, Relation, MaxVelocity, Crosses, DiscreteRelation
+from promis.logic.spatial import Depth, Distance, Over, Relation, MaxVelocity, Crosses, DiscreteRelation, OnRightSide, Follows
 
 
 class StaRMap:
@@ -55,6 +55,7 @@ class StaRMap:
             "distance": {}, 
             "depth": {},
             "maxspeed": {},
+            "on_right_side": {},
         }
 
     def initialize(self, evaluation_points: CartesianCollection, number_of_random_maps: int, logic: str):
@@ -82,6 +83,8 @@ class StaRMap:
                 return Depth
             case "maxspeed":
                 return MaxVelocity
+            case "on_right_side":
+                return OnRightSide
             case _:
                 raise NotImplementedError(f'Requested unknown relation "{relation}" from StaR Map')
 
@@ -333,6 +336,7 @@ class DeltaStaRMap(StaRMap):
         super().__init__(uam)
         self.relations.update({
             "crosses": {},
+            "follows": {},
         })
 
     @staticmethod
@@ -340,6 +344,8 @@ class DeltaStaRMap(StaRMap):
         match relation:
             case "crosses":
                 return Crosses
+            case "follows":
+                return Follows
             case _:
                 return StaRMap.relation_name_to_class(relation)
 
