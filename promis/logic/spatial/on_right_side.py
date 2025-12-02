@@ -50,7 +50,7 @@ class OnRightSide(Relation):
         cross_product = (p2[0] - p1[0]) * (point.y - p1[1]) - \
             (p2[1] - p1[1]) * (point.x - p1[0])
 
-        return cross_product < -1e-9
+        return (cross_product > 1e-9)
 
     @staticmethod
     def empty_map_parameters() -> list[float]:

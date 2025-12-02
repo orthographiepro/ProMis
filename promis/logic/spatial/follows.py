@@ -59,7 +59,7 @@ class Follows(DeltaRelation):
         ]
 
         dot_product = sum([a*b for a, b in zip(s_vector, t_vector)])
-        return dot_product > 1e-9
+        return (dot_product > 1e-9)
 
     @staticmethod
     def empty_map_parameters() -> list[float]:

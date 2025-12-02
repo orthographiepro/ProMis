@@ -809,5 +809,13 @@ def calculate_street_width(route ) -> float:
         case _:
             return 1
         
+    factor = int(route.tags["lanes"])
+    if route.tags["lanes"] == "1" and route.tags["oneway"] == "no": 
+        factor *= 1.75
+    
+    offset = 0
+    if route.location_type == "motorway": 
+        offset += 4
+        
     # add space for Mittelstreifen and broader truck lanes for motorways
-    return base_width * int(route.tags["lanes"]) + (4 if route.location_type == "motorway" else 0)
+    return base_width * factor + offset
