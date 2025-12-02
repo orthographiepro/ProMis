@@ -39,7 +39,8 @@ class OnRightSide(Relation):
         if ogeometry.tags["oneway"] == "yes":
             return True
 
-        street_line: LineString = ogeometry.tags["line"]
+        street_line = ogeometry.tags["line"]
+        street_line = LineString([loc.to_cartesian(original_geometries.origin).to_numpy() for loc in street_line.locations])
         distances = [
             LineString([street_line.coords[i], street_line.coords[i+1]]).distance(point)
             for i in range(len(street_line.coords) - 1)
