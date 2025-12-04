@@ -253,6 +253,20 @@ class CartesianPolyLine(PolyLine):
         # Setup PolyLine
         PolyLine.__init__(self, locations, location_type, name, identifier, covariance, tags)
 
+    def sample(self, number_of_samples: int = 1) -> list[DerivedPolyLine]:
+        """Sample PolyLines given this PolyLine's uncertainty.
+
+        Args:
+            number_of_samples: How many samples to draw
+
+        Returns:
+            The set of sampled PolyLines, each with same name, identifier etc.
+        """
+        samples: list[CartesianPolyLine] = super().sample(number_of_samples)
+        for sample in samples:
+            sample.origin = self.origin
+        return samples
+
     def to_polar(self, origin: PolarLocation | None = None) -> PolarPolyLine:
         """Computes the polar representation of this polyline.
 
