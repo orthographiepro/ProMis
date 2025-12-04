@@ -18,18 +18,20 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path
 from numpy import array, asarray, isfinite, ndarray, vstack
-from shapely.geometry import Polygon as ShapelyPolygon
+from shapely.geometry import Polygon as ShapelyPolygon, LineString, MultiPolygon
 
 import numpy as np
 
 # ProMis
 from promis.geo.geospatial import Geospatial
-from promis.geo.helpers import meters_to_radians, radians_to_meters
+from promis.geo.helpers import meters_to_radians, radians_to_meters, calculate_street_width
 from promis.geo.location import CartesianLocation, PolarLocation
+from promis.geo.polyline import CartesianPolyLine, PolarPolyLine, PolyLine
 from promis.models import Gaussian
 
 #: Helper to define <Polar|Cartesian>Location operatios within base class
 DerivedPolygon = TypeVar("DerivedPolygon", bound="Polygon")
+DerivedBufferedPolygon = TypeVar("DerivedPolygon", bound="BufferedPolygon")
 
 
 class Polygon(Geospatial):
@@ -41,7 +43,7 @@ class Polygon(Geospatial):
         name: str | None = None,
         identifier: int | None = None,
         covariance: ndarray | None = None,
-        tags: dict[str, str | None] | None = {}, 
+        tags: dict[str, str | None] | None = None, 
     ) -> None:
         # Assertions on the given locations
         assert len(locations) >= 3, "A polygon must contain at least three points!"
@@ -61,7 +63,7 @@ class Polygon(Geospatial):
         self.covariance = covariance
 
         # Setup tags
-        self.tags = tags
+        self.tags = tags if tags is not None else {}
         self.tags.setdefault("lanes", "1")
         self.tags.setdefault("maxspeed", "-1")
         self.tags.setdefault("oneway", "no")
@@ -201,7 +203,7 @@ class PolarPolygon(Polygon):
         name: str | None = None,
         identifier: int | None = None,
         covariance: ndarray | None = None,
-        tags: dict[str, str | None] | None = {},
+        tags: dict[str, str | None] | None = None,
     ) -> None:
         # Setup Polygon
         super().__init__(locations, holes, location_type, name, identifier, covariance, tags)
@@ -333,7 +335,7 @@ class CartesianPolygon(Polygon):
         identifier: int | None = None,
         covariance: ndarray | None = None,
         origin: PolarLocation | None = None,
-        tags: dict[str, str | None] | None = {},
+        tags: dict[str, str | None] | None = None,
     ) -> None:
         # Setup attributes
         self.origin = origin
@@ -493,3 +495,146 @@ class CartesianPolygon(Polygon):
             ],
             **kwargs,
         )
+    
+class BufferedPolygon(Polygon):
+    def __init__(self, polyline: CartesianPolyLine | PolarPolyLine, locations, holes = None, location_type = None, name = None, identifier = None, covariance = None, tags = {}):
+        super().__init__(locations, holes, location_type, name, identifier, covariance, tags)
+        self.polyline = polyline
+
+    @staticmethod
+    def buffer_polyline(polyline: PolyLine) -> DerivedBufferedPolygon:
+        """Turn a PolarPolyLine into a BufferedPolygon based on usual street widths. 
+        Keep tags and reference to original PolyLine.
+
+        Args:
+            polyline (PolarPolyLine): The PolyLine you want to buffer
+
+        Returns:
+            PolarPolygon: The buffered PolarPolygon.
+        """
+        pass
+
+    def sample(self, number_of_samples: int = 1) -> list[DerivedBufferedPolygon]:
+        """Sample a BufferedPolygon given this polygon's uncertainty.
+        As opposed to other Polygons, here the underlying PolyLine is sampled and then buffered again
+        to create the sampled Polygons.
+
+        Args:
+            number_of_samples: How many samples to draw
+
+        Returns:
+            The set of sampled polygons, each with same name, identifier etc.
+        """
+        self.polyline.covariance = self.covariance
+        self.polyline.distribution = self.distribution
+        samples = [self.buffer_polyline(sampled_polyline) for sampled_polyline in self.polyline.sample(number_of_samples)]
+        return samples
+    
+class BufferedPolarPolygon(BufferedPolygon, PolarPolygon):
+    def __init__(self, polyline: PolarPolyLine, locations, holes = None, location_type = None, name = None, identifier = None, covariance = None, tags = None):
+        BufferedPolygon.__init__(self, polyline, locations, holes, location_type, name, identifier, covariance, tags)
+        PolarPolygon.__init__(self, locations, holes, location_type, name, identifier, covariance, tags)
+
+    def __repr__(self) -> str:
+        locations = ", ".join(str(loc) for loc in self.locations)
+        return f"BufferedPolarPolygon(locations=[{locations}], polyline={repr(self.polyline)} {self._repr_extras})"
+
+    def to_cartesian(self, origin):
+        if origin is None:
+            origin = self.locations[0]
+        cartesian_pg = super().to_cartesian(origin)
+        cartesian_pl = self.polyline.to_cartesian(origin)
+
+        return BufferedCartesianPolygon(
+            polyline=cartesian_pl,
+            locations=cartesian_pg.locations,
+            holes=cartesian_pg.holes,
+            location_type=self.location_type,
+            identifier=self.identifier,
+            covariance=cartesian_pg.covariance,
+            origin=origin,
+            tags=self.tags,
+        )
+
+    @staticmethod
+    def buffer_polyline(polyline: PolarPolyLine) -> "BufferedPolarPolygon":
+        """Turn a PolarPolyLine into a BufferedPolarPolygon based on usual street widths. 
+        Keep tags and reference to original PolyLine, which is used for sampling.
+
+        Args:
+            polyline (PolarPolyLine): The PolyLine you want to buffer
+
+        Returns:
+            BufferedPolarPolygon: The buffered PolarPolygon.
+        """
+        width = calculate_street_width(polyline)
+        location_type = polyline.location_type
+        origin = polyline.locations[0]
+        tags = polyline.tags | {"line": polyline}
+
+        line = LineString([loc.to_cartesian(origin).to_numpy() for loc in polyline.locations])
+        buffer = line.buffer(width / 2)
+        exterior = buffer.geoms[0].exterior if isinstance(buffer, MultiPolygon) else buffer.exterior
+        return BufferedPolarPolygon(
+                polyline=polyline,
+                locations=[
+                    CartesianLocation(*point, location_type=location_type)
+                    .to_polar(origin)
+                    for point in exterior.coords
+                ],
+                location_type=location_type,
+                tags=tags,
+            )
+
+class BufferedCartesianPolygon(BufferedPolygon, CartesianPolygon):
+    def __init__(self, polyline: CartesianPolyLine, locations, holes = None, location_type = None, name = None, identifier = None, covariance = None, origin = None, tags = {}):
+        BufferedPolygon.__init__(self, polyline, locations, holes, location_type, name, identifier, covariance, tags)
+        CartesianPolygon.__init__(self, locations, holes, location_type, name, identifier, covariance, origin, tags)
+
+    def __repr__(self) -> str:
+        locations = ", ".join(str(loc) for loc in self.locations)
+        return f"BufferedCartesianPolygon(locations=[{locations}], polyline={repr(self.polyline)} {self._repr_extras})"
+    
+    def to_polar(self, origin = None):
+        polar_pg = super().to_polar(origin)
+        polar_pl = self.polyline.to_polar(origin)
+
+        return BufferedPolarPolygon(
+            polyline=polar_pl,
+            locations=polar_pg.locations,
+            holes=polar_pg.holes,
+            location_type=self.location_type,
+            identifier=self.identifier,
+            covariance=polar_pg.covariance,
+            tags=self.tags,
+        )
+
+    @staticmethod
+    def buffer_polyline(polyline: CartesianPolyLine) -> "BufferedPolarPolygon":
+        """Turn a PolarPolyLine into a BufferedPolarPolygon based on usual street widths. 
+        Keep tags and reference to original PolyLine, which is used for sampling.
+
+        Args:
+            polyline (PolarPolyLine): The PolyLine you want to buffer
+
+        Returns:
+            BufferedPolarPolygon: The buffered PolarPolygon.
+        """
+        width = calculate_street_width(polyline)
+        location_type = polyline.location_type
+        tags = polyline.tags | {"line": polyline.to_polar(polyline.origin)}
+        
+        line = LineString([loc.to_numpy() for loc in polyline.locations])
+        buffer = line.buffer(width / 2)
+        exterior = buffer.geoms[0].exterior if isinstance(buffer, MultiPolygon) else buffer.exterior
+        return BufferedCartesianPolygon(
+                polyline=polyline,
+                locations=[
+                    CartesianLocation(*point, location_type=location_type)
+                    for point in exterior.coords
+                ],
+                location_type=location_type,
+                origin=polyline.origin,
+                tags=tags,
+            )
+

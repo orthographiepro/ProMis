@@ -13,14 +13,13 @@ import logging
 from time import sleep
 
 # Third Party
-from shapely.geometry import LineString, MultiPolygon
+
 from overpy import Overpass, Relation
 from overpy import Overpass, Relation, exception
 
 # ProMis
-from promis.geo import PolarLocation, PolarPolygon, PolarPolyLine, CartesianLocation
+from promis.geo import PolarLocation, PolarPolygon, PolarPolyLine, BufferedPolarPolygon
 from promis.loaders.spatial_loader import SpatialLoader
-from promis.geo.helpers import calculate_street_width
 
 log = logging.getLogger(__name__)
 
@@ -163,9 +162,10 @@ class OsmLoader(SpatialLoader):
                 self.features.append(PolarPolygon(nodes, location_type=location_type, tags=tags))
             else:
                 polyline = PolarPolyLine(nodes, location_type=location_type, tags=tags)
-                self.features.append(polyline)
                 if self.polygonize_routes:
-                    self.features.append(self._buffer_polyline(polyline))
+                    self.features.append(BufferedPolarPolygon.buffer_polyline(polyline))
+                else:
+                    self.features.append(polyline)
 
     def _load_relations(self, osm_filter: str, location_type: str, bounding_box: str) -> None:
         """Loads relations from OSM and converts them to polygons.
@@ -234,31 +234,3 @@ class OsmLoader(SpatialLoader):
             ],
             **kwargs,
         )
-    
-    def _buffer_polyline(self, polyline: PolarPolyLine) -> PolarPolygon:
-        """Turn a PolarPolyLine into a PolyPolygon based on usual street widths. 
-        Keep tags and reference to original PolyLine.
-
-        Args:
-            polyline (PolarPolyLine): The PolyLine you want to buffer
-
-        Returns:
-            PolarPolygon: The buffered PolarPolygon.
-        """
-        width = calculate_street_width(polyline)
-        tags = polyline.tags | { "line": polyline }
-        location_type = polyline.location_type
-
-        line = LineString([loc.to_cartesian(self.origin).to_numpy() for loc in polyline.locations])
-        buffer = line.buffer(width / 2)
-        exterior = buffer.geoms[0].exterior if isinstance(buffer, MultiPolygon) else buffer.exterior
-        return PolarPolygon(
-                locations=[
-                    CartesianLocation(*point, location_type=location_type)
-                    .to_polar(self.origin)
-                    for point in exterior.coords
-                ],
-                location_type=location_type,
-                tags=tags,
-            )
-
