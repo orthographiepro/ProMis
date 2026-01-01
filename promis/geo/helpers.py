@@ -797,12 +797,12 @@ def calculate_street_width(route ) -> float:
             # Landesstraße
             base_width = 3
         case "tertiary":
-            base_width = 2.75
+            base_width = 3.25
         case "residential":
             base_width = 2.75
         case "living_street":
             base_width = 2.75
-        case "undefined":
+        case "unclassified":
             base_width = 2.75
         case "service":
             base_width = 2.5
@@ -811,11 +811,16 @@ def calculate_street_width(route ) -> float:
         
     factor = int(route.tags["lanes"])
     if route.tags["lanes"] == "1" and route.tags["oneway"] == "no": 
-        factor *= 1.75
+        factor *= 1.5
     
-    offset = 0
+    offset = 1
     if route.location_type == "motorway": 
         offset += 4
+
+    base_width, factor, offset = {
+        "Süsterfeldstraße": (2.5, factor, 0),
+        "Kühlwetterstraße": (8, 1, 0),
+    }.get(route.name, (base_width, factor, offset))
         
     # add space for Mittelstreifen and broader truck lanes for motorways
     return base_width * factor + offset

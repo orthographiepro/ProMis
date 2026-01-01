@@ -131,15 +131,15 @@ class OsmLoader(SpatialLoader):
                 for node in way.nodes
             ]
             tags = dict((k, way.tags[k]) for k in ["oneway", "lanes", "maxspeed"] if k in way.tags)
-
+            way_name = way.tags.get("name", None)
             if len(nodes) < 2:
                 continue
 
             # A way is considered closed if its first and last nodes are identical.
             if way.nodes[0].id == way.nodes[-1].id and len(nodes) > 2:
-                self.features.append(PolarPolygon(nodes, location_type=location_type, tags=tags))
+                self.features.append(PolarPolygon(nodes, location_type=location_type, name=way_name, tags=tags))
             else:
-                polyline = PolarPolyLine(nodes, location_type=location_type, tags=tags)
+                polyline = PolarPolyLine(nodes, location_type=location_type, name=way_name, tags=tags)
                 if self.polygonize_routes:
                     polygon = BufferedPolarPolygon.buffer_polyline(polyline)
                     self.features.append(polygon)
