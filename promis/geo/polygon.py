@@ -18,7 +18,8 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path
 from numpy import array, asarray, isfinite, ndarray, vstack
-from shapely.geometry import Polygon as ShapelyPolygon, LineString, MultiPolygon
+from shapely.geometry import Polygon as ShapelyPolygon, LineString, MultiPolygon, Point
+from shapely.ops import split
 
 import numpy as np
 
@@ -550,11 +551,17 @@ class BufferedPolarPolygon(BufferedPolygon, PolarPolygon):
             locations=cartesian_pg.locations,
             holes=cartesian_pg.holes,
             location_type=self.location_type,
+            name=self.name,
             identifier=self.identifier,
             covariance=cartesian_pg.covariance,
             origin=origin,
             tags=self.tags,
         )
+    
+    def split_sides(self) -> list[PolarPolygon]:
+        cartesian = self.to_cartesian(self.locations[0])
+        return [cartesian_part.to_polar(self.locations[0]) for cartesian_part in cartesian.split_sides()]
+    
 
     @staticmethod
     def buffer_polyline(polyline: PolarPolyLine) -> "BufferedPolarPolygon":
@@ -583,6 +590,9 @@ class BufferedPolarPolygon(BufferedPolygon, PolarPolygon):
                     for point in exterior.coords
                 ],
                 location_type=location_type,
+                name=polyline.name, 
+                identifier=polyline.identifier, # TODO: do they need to be unique?
+                covariance=polyline.covariance,
                 tags=tags,
             )
 
@@ -604,10 +614,51 @@ class BufferedCartesianPolygon(BufferedPolygon, CartesianPolygon):
             locations=polar_pg.locations,
             holes=polar_pg.holes,
             location_type=self.location_type,
+            name=self.name,
             identifier=self.identifier,
             covariance=polar_pg.covariance,
             tags=self.tags,
         )
+
+    def split_sides(self) -> list[CartesianPolygon]:
+        last_diff: CartesianLocation = self.polyline.locations[-1] - self.polyline.locations[-2].to_numpy()
+        last_diff = last_diff.to_numpy()
+        last_diff *= 20 / self.polyline.locations[-1].distance(self.polyline.locations[-2])
+        last = self.polyline.locations[-1] + last_diff
+
+        first_diff:CartesianLocation = self.polyline.locations[0] - self.polyline.locations[1].to_numpy()
+        first_diff = first_diff.to_numpy()
+        first_diff *= 20 / self.polyline.locations[0].distance(self.polyline.locations[1])
+        first = self.polyline.locations[0] + first_diff
+
+        helper = CartesianPolyLine([first, *self.polyline.locations[1:-1] ,last])
+
+        collection = split(self.geometry, helper.geometry)
+        
+        point = np.array(collection.geoms[0].exterior.xy).mean(axis=1)
+        street_line = helper.geometry
+        distances = [
+            LineString([street_line.coords[i], street_line.coords[i+1]]).distance(Point(point))
+            for i in range(len(street_line.coords) - 1)
+        ]
+        nearest_index = min(enumerate(distances), key=lambda x: x[1])[0]
+        p1 = street_line.coords[nearest_index]
+        p2 = street_line.coords[nearest_index + 1]
+        cross_product = (p2[0] - p1[0]) * (point[1] - p1[1]) - \
+            (p2[1] - p1[1]) * (point[0] - p1[0])
+        
+        left_first = cross_product > 0
+        labels = ["left", "right"]
+        labels = labels if left_first else labels[::-1]
+        
+        return [CartesianPolygon.from_numpy(
+            np.stack(geo.exterior.xy), 
+            location_type=f"{side}_{self.location_type}",
+            name=self.name,
+            identifier=self.identifier,
+            covariance=self.covariance,
+            tags=self.tags,
+        ) for geo, side in zip(collection.geoms, labels)]
 
     @staticmethod
     def buffer_polyline(polyline: CartesianPolyLine) -> "BufferedPolarPolygon":

@@ -95,28 +95,6 @@ class OsmLoader(SpatialLoader):
         # Load data via Overpass
         while True:
             try:
-                # result = self.overpass_api.query(
-                #     f"""
-                #         [out:json];
-                #         way{filters}{bounding_box};
-                #         out geom{bounding_box};>;out;
-                #     """
-                # )
-
-                # self.features += [
-                #     PolarPolyLine(
-                #         [
-                #             PolarLocation(
-                #                 latitude=float(node.lat), longitude=float(node.lon), location_type=name
-                #             )
-                #             for node in way.nodes
-                #         ],
-                #         location_type=name,
-                #         tags=dict((k, way.tags[k]) for k in ["oneway", "lanes", "maxspeed"] if k in way.tags),
-                #     )
-                #     for way in result.ways
-                # ]
-
                 return self.overpass_api.query(query)
             except (exception.OverpassGatewayTimeout, exception.OverpassTooManyRequests):
                 log.warning("OSM query failed, sleeping %fs...", self.timeout)
@@ -163,7 +141,9 @@ class OsmLoader(SpatialLoader):
             else:
                 polyline = PolarPolyLine(nodes, location_type=location_type, tags=tags)
                 if self.polygonize_routes:
-                    self.features.append(BufferedPolarPolygon.buffer_polyline(polyline))
+                    polygon = BufferedPolarPolygon.buffer_polyline(polyline)
+                    self.features.append(polygon)
+                    self.features.extend(polygon.split_sides())
                 else:
                     self.features.append(polyline)
 
