@@ -23,7 +23,7 @@ from numpy.typing import NDArray
 
 # ProMis
 from promis.geo import CartesianCollection, CartesianDeltaCollection, CartesianMap, Collection
-from promis.logic.spatial import Depth, Distance, Over, Relation, MaxVelocity, Crosses, DiscreteRelation, OnRightSide, Follows
+from promis.logic.spatial import Angle, Depth, Distance, Over, Relation, MaxVelocity, Crosses, DiscreteRelation, OnRightSide, Follows, DeltaRelation
 
 
 class StaRMap:
@@ -48,6 +48,7 @@ class StaRMap:
             "depth": {},
             "maxspeed": {},
             "on_right_side": {},
+            "angle": {},
         }
 
     def initialize(self, evaluation_points: CartesianCollection, number_of_random_maps: int, logic: str):
@@ -88,6 +89,8 @@ class StaRMap:
                 return MaxVelocity
             case "on_right_side":
                 return OnRightSide
+            case "angle":
+                return Angle
             case _:
                 raise NotImplementedError(f'Requested unknown relation "{relation}" from StaR Map')
 
@@ -385,10 +388,6 @@ class StaRMap:
                     )
                 #TODO hier die values entsprechend der Rückgabe von compute anpassen
                 vals = self._compute_parameters(coordinates, relation, location_type, r_trees, random_maps)
-                print(vals.shape, vals)
-                # Update collection of sample points
-
-                print(coordinates.shape, vals.shape)
                 self.relations[relation][location_type].parameters.append(
                     coordinates,
                     vals, 

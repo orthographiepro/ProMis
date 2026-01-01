@@ -17,5 +17,6 @@ from promis.logic.spatial.max_velocity import MaxVelocity
 from promis.logic.spatial.crosses import Crosses
 from promis.logic.spatial.on_right_side import OnRightSide
 from promis.logic.spatial.follows import Follows
+from promis.logic.spatial.angle import Angle
 
-__all__ = ["Crosses", "DeltaRelation", "Depth", "Distance", "Follows", "MaxVelocity", "OnRightSide", "Over", "Relation", "ScalarRelation"]
+__all__ = ["Angle", "Crosses", "DeltaRelation", "Depth", "Distance", "Follows", "MaxVelocity", "OnRightSide", "Over", "Relation", "ScalarRelation"]
