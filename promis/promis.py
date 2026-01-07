@@ -63,7 +63,7 @@ class ProMis:
         """
 
         # Get all relevant relations from the StaRMap
-        relations = self.star_map.get_all(logic)
+        relations = self.star_map.get_all(None)
         for relation_type in relations.keys():
             for location_type in relations[relation_type].keys():
                 relation = relations[relation_type][location_type]

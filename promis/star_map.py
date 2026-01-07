@@ -215,6 +215,9 @@ class StaRMap:
                         location_type = match.group(2)
                         if location_type[0] in "'\"":  # Remove quotes
                             location_type = location_type[1:-1]
+                        if location_type[0].isupper():
+                            # location_type is a problog variable. unlikely to find an uam correspondence
+                            continue
                         relations[name].add(location_type)
                 else:
                     raise Exception(f"Only arity 2 is supported, but got {arity}")
