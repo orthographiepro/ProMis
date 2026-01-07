@@ -22,7 +22,7 @@ from .relation import DeltaRelation
 
 class Follows(DeltaRelation):
     def index_to_distributional_clause(self, index: int) -> str:
-        return f"{self.parameters.data['v0'][index]}::follows(x_{index}, {self.location_type}).\n"
+        return f"{self.parameters.data['v0'][index]}::follows(x_{index}, {self.location_type}) :- over(x_{index}, {self.location_type}).\n"
 
     @staticmethod
     def compute_relation(
@@ -33,27 +33,35 @@ class Follows(DeltaRelation):
         speed = kwargs["speed"]
         bearing = kwargs["bearing"] / 180 * pi
 
-        velocity = speed / 3.6 * array([sin(bearing), cos(bearing)]).reshape((2,1))  # m/s, 1s naive prognosis
+        # m/s, 1s naive prognosis
+        velocity = speed / 3.6 * array([sin(bearing), cos(bearing)])
         point = location.geometry
         geometry_index = r_tree.nearest(point)
-        geometry = r_tree.geometries[geometry_index]
         ogeometry = original_geometries.features[geometry_index]
-        if not point.within(geometry): 
-            return False
 
-        trajectory = LineString([point, (location + velocity).geometry]).coords
-        t_vector = (
-            trajectory[1][0] - trajectory[0][0],
-            trajectory[1][1] - trajectory[0][1],
-        )
+        t_vector = (velocity[0], velocity[1])
 
         street_line = ogeometry.tags["line"]
         street_line = LineString([loc.to_cartesian(original_geometries.origin).to_numpy() for loc in street_line.locations])
-        distances = [
-            LineString([street_line.coords[i], street_line.coords[i+1]]).distance(point)
-            for i in range(len(street_line.coords) - 1)
-        ]
-        nearest_index = min(enumerate(distances), key=lambda x: x[1])[0]
+
+        # Project the point onto the line to get the distance along the line
+        distance_on_line = street_line.project(point)
+
+        # Find the segment index that contains the projected point
+        nearest_index = -1
+        cumulative_distance = 0.0
+        coords = street_line.coords
+        for i in range(len(coords) - 1):
+            p1 = coords[i]
+            p2 = coords[i+1]
+            segment_length = ((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)**0.5
+            if cumulative_distance <= distance_on_line <= cumulative_distance + segment_length:
+                nearest_index = i
+                break
+            cumulative_distance += segment_length
+        if nearest_index == -1:
+            nearest_index = len(coords) - 2
+
         s_vector = [
             street_line.coords[nearest_index + 1][0] - street_line.coords[nearest_index][0],
             street_line.coords[nearest_index + 1][1] - street_line.coords[nearest_index][1],

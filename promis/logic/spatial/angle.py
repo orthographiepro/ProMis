@@ -20,6 +20,7 @@ from promis.geo import CartesianLocation, CartesianMap, PolarPolyLine, Cartesian
 
 from .relation import ScalarRelation
 
+DEFAULT_UNIFORM_VARIANCE = 0.25
 
 class Angle(ScalarRelation):
 
@@ -54,7 +55,7 @@ class Angle(ScalarRelation):
 
     @staticmethod
     def empty_map_parameters() -> list[float]:
-        return [0.0, 0.0]
+        return [0.0, DEFAULT_UNIFORM_VARIANCE]
 
     @staticmethod
     def arity() -> int:

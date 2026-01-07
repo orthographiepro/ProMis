@@ -11,6 +11,7 @@
 # Geometry
 from shapely.strtree import STRtree
 from shapely import LineString
+from shapely.ops import split
 
 from numpy import array, sin, cos, pi
 
@@ -22,7 +23,7 @@ from .relation import Relation
 
 class OnRightSide(Relation):
     def index_to_distributional_clause(self, index: int) -> str:
-        return f"{self.parameters.data['v0'][index]}::on_right_side(x_{index}, {self.location_type}).\n"
+        return f"{self.parameters.data['v0'][index]}::on_right_side(x_{index}, {self.location_type}) :- over(x_{index}, {self.location_type}).\n"
 
     @staticmethod
     def compute_relation(
@@ -32,8 +33,8 @@ class OnRightSide(Relation):
         geometry_index = r_tree.nearest(point)
         geometry = r_tree.geometries[geometry_index]
         ogeometry = original_geometries.features[geometry_index]
-        if not point.within(geometry): 
-            return False
+        # if not point.within(geometry): 
+        #     return False
 
         # if we are on a one way street, the predicate becomes useless
         if ogeometry.tags["oneway"] == "yes":
