@@ -64,8 +64,8 @@ class StaRMap:
             evaluation_points, number_of_random_maps, self._get_mentioned_relations(logic)
         )
 
-    @staticmethod
-    def relation_name_to_class(relation: str) -> Relation:
+    # @staticmethod
+    def relation_name_to_class(self, relation: str) -> Relation:
         """Get the class for a given relation name.
 
         Args:
@@ -401,22 +401,27 @@ class StaRMap:
         return CartesianCollection(origin, number_of_values)
 
 class DeltaStaRMap(StaRMap):
-    def __init__(self, uam):
+    def __init__(self, uam, dt = 1.0):
         super().__init__(uam)
         self.relations.update({
             "crosses": {},
             "follows": {},
         })
+        self.dt = dt
 
-    @staticmethod
-    def relation_name_to_class(relation: str) -> Relation:
+    # @staticmethod
+    def relation_name_to_class(self, relation: str) -> Relation:
         match relation:
             case "crosses":
-                return Crosses
+                class DCrosses(Crosses):
+                    dt = self.dt
+                return DCrosses
             case "follows":
-                return Follows
+                class DFollows(Follows):
+                    dt = self.dt
+                return DFollows
             case _:
-                return StaRMap.relation_name_to_class(relation)
+                return StaRMap.relation_name_to_class(self, relation)
 
     @staticmethod
     def _make_collection(origin, number_of_values=1) -> Collection:

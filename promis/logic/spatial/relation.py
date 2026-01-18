@@ -390,6 +390,9 @@ class ScalarRelation(Relation):
         return f"{relation} ~ {distribution}.\n"
     
 class DeltaRelation(Relation):
+
+    dt = None
+
     def __init__(self, parameters, location_type):
         super().__init__(parameters, location_type)
         assert isinstance(parameters, CartesianDeltaCollection)
@@ -413,18 +416,16 @@ class DeltaRelation(Relation):
         Returns:
             The computed relation
         """
-
-        # TODO if `support` is a RasterBand, we could make parameters a RasterBand as well
-        # to maintain the efficient raster representation
+    
         assert isinstance(support, CartesianDeltaCollection)
-        # Compute Over over support points
+
         locations = support.to_cartesian_locations()
         bearings = support.get_bearings()
         speeds = support.get_speeds()
 
         statistical_moments = vstack(
             [
-                cls.compute_parameters(location, r_trees, original_geometries, bearing=bearing, speed=speed)
+                cls.compute_parameters(location, r_trees, original_geometries, bearing=bearing, speed=speed, dt=cls.dt)
                 for location, bearing, speed in zip(locations, bearings, speeds)
             ]
         )

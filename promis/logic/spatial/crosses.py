@@ -12,7 +12,7 @@
 from shapely.strtree import STRtree
 from shapely import LineString, Geometry
 
-from numpy import array, sin, cos, pi
+from numpy import array, sin, cos, deg2rad
 
 # ProMis
 from promis.geo import CartesianLocation, CartesianMap
@@ -31,12 +31,16 @@ class Crosses(DeltaRelation):
         # check signature
         if not "speed" in kwargs and not "bearing" in kwargs:
             raise KeyError(f"compute_relation called with insufficient kwargs. Expected 'bearing' and 'speed', got {kwargs}")
-        speed = kwargs["speed"]
-        bearing = kwargs["bearing"] / 180 * pi
+        if not "dt" in kwargs:
+            raise KeyError(f"compute_relation called with insufficient kwargs. Expected 'dt', got {kwargs}")
 
-        velocity = speed / 3.6 * array([sin(bearing), cos(bearing)]).reshape((2,1))  # m/s, 1s naive prognosis
+        speed = kwargs["speed"]
+        bearing = deg2rad(kwargs["bearing"])
+        dt = kwargs["dt"]
+
+        velocity = dt * speed / 3.6 * array([sin(bearing), cos(bearing)]).reshape((2,1))  # m/s, naive prognosis with given timestep
         trajectory = LineString([location.geometry, (location + velocity).geometry])
-        geometry = r_tree.geometries.take(r_tree.nearest(location.geometry)) 
+        geometry = r_tree.geometries.take(r_tree.nearest(location.geometry))
         # no need to check for loc type as all geometries we get are previously filtered
         return trajectory.crosses(geometry)
 
