@@ -12,7 +12,6 @@
 from collections import defaultdict
 from collections.abc import Callable, Iterable
 from copy import deepcopy
-from pickle import dump, load
 from re import finditer
 from traceback import format_exception
 from warnings import warn
@@ -20,6 +19,7 @@ from warnings import warn
 # Third Party
 from numpy import array
 from numpy.typing import NDArray
+from pickle import dump, load
 
 # ProMis
 from promis.geo import CartesianCollection, CartesianDeltaCollection, CartesianMap, Collection
@@ -334,12 +334,7 @@ class StaRMap:
             )
 
             if issubclass(relation_class, DiscreteRelation):
-
-                print("cases:", initialized_relation.cases, self.relations[relation][location_type].parameters.data.columns)
                 self.relations[relation][location_type].set_cases(initialized_relation.cases)
-                print("cases:", initialized_relation.cases, self.relations[relation][location_type].parameters.data.columns)
-
-            print(initialized_relation.parameters.data.head())
             return initialized_relation.parameters.values()
 
         except Exception as e:
@@ -413,16 +408,61 @@ class DeltaStaRMap(StaRMap):
     def relation_name_to_class(self, relation: str) -> Relation:
         match relation:
             case "crosses":
-                class DCrosses(Crosses):
-                    dt = self.dt
-                return DCrosses
+                # causes pickling problems... also with dill
+                # class DCrosses(Crosses): 
+                #     dt = self.dt
+                # return DCrosses
+                return CROSSES_LOOKUP[self.dt]
             case "follows":
-                class DFollows(Follows):
-                    dt = self.dt
-                return DFollows
+                return FOLLOWS_LOOKUP[self.dt]
             case _:
                 return StaRMap.relation_name_to_class(self, relation)
 
     @staticmethod
     def _make_collection(origin, number_of_values=1) -> Collection:
         return CartesianDeltaCollection(origin, number_of_values)
+
+# class definitions as hotfix for pickling issue
+class Follows05(Follows):
+    dt = 0.5
+class Follows10(Follows):
+    dt = 1
+class Follows15(Follows):
+    dt = 1.5
+class Follows20(Follows):
+    dt = 2.0
+class Follows30(Follows):
+    dt = 3.0
+class Follows40(Follows):
+    dt = 4.0
+
+class Crosses05(Crosses): 
+    dt = 0.5
+class Crosses10(Crosses): 
+    dt = 1.0
+class Crosses15(Crosses): 
+    dt = 1.5
+class Crosses20(Crosses): 
+    dt = 2.0
+class Crosses30(Crosses): 
+    dt = 3.0
+class Crosses40(Crosses): 
+    dt = 4.0
+
+CROSSES_LOOKUP = {
+    0.5: Crosses05,
+    1.0: Crosses10,
+    1.5: Crosses15,
+    2.0: Crosses20,
+    3.0: Crosses30,
+    4.0: Crosses40
+}
+
+FOLLOWS_LOOKUP = {
+    0.5: Follows05,
+    1.0: Follows10,
+    1.5: Follows15,
+    2.0: Follows20,
+    3.0: Follows30,
+    4.0: Follows40,
+}

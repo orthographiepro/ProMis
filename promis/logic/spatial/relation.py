@@ -14,6 +14,8 @@ from pathlib import Path
 from pickle import dump, load
 from typing import TypeVar
 from warnings import warn
+from functools import partial
+from multiprocessing import Pool
 
 # Third Party
 from numpy import ndarray, array, clip, mean, sqrt, var, vstack, column_stack, unique
@@ -27,6 +29,7 @@ from promis.geo import CartesianCollection, CartesianLocation, CartesianMap, Car
 #: Helper to define derived relations within base class
 DerivedRelation = TypeVar("DerivedRelation", bound="Relation")
 
+NUM_PROCESSES = 8
 
 class Relation(ABC):
     """An abstract base class for spatial relations.
@@ -189,12 +192,21 @@ class Relation(ABC):
 
         # Compute relation over support points
         locations = support.to_cartesian_locations() # if erroneous, change to CartesianCollection.to_...
-        statistical_moments = vstack(
-            [
-                cls.compute_parameters(location, r_trees, original_geometries)
-                for location in locations
-            ]
-        )
+        # statistical_moments = vstack(
+        #     [
+        #         cls.compute_parameters(location, r_trees, original_geometries)
+        #         for location in locations
+        #     ]
+        # )
+
+        with Pool(NUM_PROCESSES) as p:
+            parameter_func = partial(cls.compute_parameters, r_trees=r_trees, original_geometries=original_geometries)
+            statistical_moments = vstack(
+                p.map(
+                    parameter_func,
+                    locations,
+                )
+            )
 
         if isinstance(support, CartesianRasterBand):
             # Maintain the efficient raster representation
@@ -398,6 +410,10 @@ class DeltaRelation(Relation):
         assert isinstance(parameters, CartesianDeltaCollection)
 
     @classmethod
+    def _unpack_compute(cls, kwargs):
+        return cls.compute_parameters(**kwargs)
+
+    @classmethod
     def from_r_trees(
         cls,
         support: CartesianCollection,
@@ -423,12 +439,27 @@ class DeltaRelation(Relation):
         bearings = support.get_bearings()
         speeds = support.get_speeds()
 
-        statistical_moments = vstack(
-            [
-                cls.compute_parameters(location, r_trees, original_geometries, bearing=bearing, speed=speed, dt=cls.dt)
-                for location, bearing, speed in zip(locations, bearings, speeds)
-            ]
-        )
+        # statistical_moments = vstack(
+        #     [
+        #         cls.compute_parameters(location, r_trees, original_geometries, bearing=bearing, speed=speed, dt=cls.dt)
+        #         for location, bearing, speed in zip(locations, bearings, speeds)
+        #     ]
+        # )
+
+        with Pool(NUM_PROCESSES) as p:
+            statistical_moments = vstack(
+                p.map(
+                    cls._unpack_compute,
+                    [{
+                        "location": location, 
+                        "r_trees": r_trees, 
+                        "original_geometries": original_geometries, 
+                        "bearing": bearing, 
+                        "speed": speed, 
+                        "dt": cls.dt,
+                    } for location, bearing, speed in zip(locations, bearings, speeds)],
+                )
+            )
 
         # Setup parameter collection and return relation
         parameters = CartesianDeltaCollection(
@@ -440,7 +471,7 @@ class DeltaRelation(Relation):
             bearings,
             speeds,
         ))
-        print(states)
+        # print(states)
         parameters.append(states, statistical_moments)
 
         return cls(parameters, location_type)

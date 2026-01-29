@@ -15,14 +15,14 @@ from shapely import LineString
 from numpy import array, sin, cos, pi
 
 # ProMis
-from promis.geo import CartesianLocation, CartesianMap
+from promis.geo import CartesianLocation, CartesianMap, CartesianPolyLine, PolarPolyLine
 
 from .relation import DeltaRelation
 
 
 class Follows(DeltaRelation):
     def index_to_distributional_clause(self, index: int) -> str:
-        return f"{self.parameters.data['v0'][index]}::follows(x_{index}, {self.location_type}) :- over(x_{index}, {self.location_type}).\n"
+        return f"{self.parameters.data['v0'][index]}::follows(x_{index}, {self.location_type}).\n"
 
     @staticmethod
     def compute_relation(
@@ -44,30 +44,26 @@ class Follows(DeltaRelation):
         street_line = ogeometry.tags["line"]
         street_line = LineString([loc.to_cartesian(original_geometries.origin).to_numpy() for loc in street_line.locations])
 
-        # Project the point onto the line to get the distance along the line
-        distance_on_line = street_line.project(point)
+        point = location
+        geom_index = r_tree.nearest(point.geometry)
+        ogeometry = original_geometries.features[geom_index]
 
-        # Find the segment index that contains the projected point
-        nearest_index = -1
-        cumulative_distance = 0.0
-        coords = street_line.coords
-        for i in range(len(coords) - 1):
-            p1 = coords[i]
-            p2 = coords[i+1]
-            segment_length = ((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)**0.5
-            if cumulative_distance <= distance_on_line <= cumulative_distance + segment_length:
-                nearest_index = i
-                break
-            cumulative_distance += segment_length
-        if nearest_index == -1:
-            nearest_index = len(coords) - 2
+        polar_line: PolarPolyLine = ogeometry.tags["line"]
+        street_line: CartesianPolyLine = polar_line.to_cartesian(original_geometries.origin)
+        coords = street_line.geometry.coords
 
-        s_vector = [
-            street_line.coords[nearest_index + 1][0] - street_line.coords[nearest_index][0],
-            street_line.coords[nearest_index + 1][1] - street_line.coords[nearest_index][1],
-        ]
+        if "tree" not in ogeometry.tags.keys():
+            segments = [LineString(coords[i:i+2]) for i in range(len(coords)-1)]
+            segments = STRtree(segments, 4)
+            ogeometry.tags["tree"] = segments
+        else: 
+            segments = ogeometry.tags["tree"]
+        
+        part_index = segments.nearest(point.geometry)
+        a, b = coords[part_index:part_index+2]
+        s_vector = array((b[0] - a[0], b[1] - a[1]))
 
-        dot_product = sum([a*b for a, b in zip(s_vector, t_vector)])
+        dot_product = sum([v1*v2 for v1, v2 in zip(s_vector, t_vector)])
         return (dot_product > 1e-9)
 
     @staticmethod

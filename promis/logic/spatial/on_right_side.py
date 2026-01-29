@@ -23,7 +23,7 @@ from .relation import Relation
 
 class OnRightSide(Relation):
     def index_to_distributional_clause(self, index: int) -> str:
-        return f"{self.parameters.data['v0'][index]}::on_right_side(x_{index}, {self.location_type}) :- over(x_{index}, {self.location_type}).\n"
+        return f"{self.parameters.data['v0'][index]}::on_right_side(x_{index}, {self.location_type}).\n"
 
     @staticmethod
     def compute_relation(
