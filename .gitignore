@@ -275,6 +275,8 @@ dist
 .idea
 
 # Folders with derived content
+examples/**/*.svg
+examples/**/*.csv
 examples/**/*.pkl
 examples/**/*.npy
 examples/**/*.npz
@@ -285,3 +287,4 @@ examples/cofi-exports/**
 examples/coco/data/**
 
 data
+examples/**/figures/**
