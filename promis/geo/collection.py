@@ -142,6 +142,16 @@ class Collection(ABC):
 
         location_columns = self.data.columns[:2]
         return self.data[location_columns].to_numpy()
+    
+    def unique_coordinates(self) -> NDArray[Any]:
+        """Unpack the unique location coordinates as numpy array.
+
+        Returns:
+            The indices of this Collection as numpy array
+        """
+
+        location_columns = list(self.data.columns[:2])
+        return array([name for name, _ in self.data.groupby(location_columns, sort=False)])
 
     def __getitem__(self, position: tuple[float, float]) -> NDArray[Any]:
         """Get the value(s) at a specific coordinate.
@@ -470,7 +480,7 @@ class CartesianCollection(Collection):
             A list of `CartesianLocation` objects.
         """
 
-        coordinates = self.coordinates()
+        coordinates = self.unique_coordinates()
 
         locations = []
         for i in range(coordinates.shape[0]):
@@ -531,13 +541,14 @@ class CartesianCollection(Collection):
             target = deepcopy(other)
 
         # Expand or reduce target to take up the same number of value columns
-        while len(target.data.columns) < len(self.data.columns):
-            target.data[f"v{len(target.data.columns) - 2}"] = 0.0
-        while len(target.data.columns) > len(self.data.columns):
-            del target.data[f"v{len(target.data.columns) - 3}"]
+        number_of_coordinates = self.data.columns.to_list().index("v0")
+        
+        target.data = target.data.reindex(columns=self.data.columns, fill_value=0.0)
+
+        target.number_of_values = self.number_of_values
 
         interpolated = self.get_interpolator(interpolation_method)(target.coordinates())
-        target.data.iloc[:, 2:] = atleast_2d(interpolated)
+        target.data.iloc[:, number_of_coordinates:] = atleast_2d(interpolated)
 
         return target
 

@@ -11,7 +11,7 @@
 # ProMis
 from promis.coco import ConstitutionalController, DoubtDensity
 from promis.promis import ProMis
-from promis.star_map import StaRMap
+from promis.star_map import StaRMap, DeltaStaRMap
 
 __all__ = ["ProMis", "StaRMap", "ConstitutionalController", "DoubtDensity"]
 __version__ = "3.0.0"

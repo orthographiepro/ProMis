@@ -1,0 +1,53 @@
+"""This module implements a distributional predicate of distances to sets of map features."""
+
+#
+# Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH
+#
+# This file is part of ProMis and licensed under the BSD 3-Clause License.
+# You should have received a copy of the BSD 3-Clause License along with ProMis.
+# If not, see https://opensource.org/license/bsd-3-clause/.
+#
+
+# Geometry
+from shapely.strtree import STRtree
+from shapely import LineString, Geometry
+
+from numpy import array, sin, cos, deg2rad
+
+# ProMis
+from promis.geo import CartesianLocation, CartesianMap
+
+from .relation import DeltaRelation
+
+
+class Crosses(DeltaRelation):
+    def index_to_distributional_clause(self, index: int) -> str:
+        return f"{self.parameters.data['v0'][index]}::crosses(x_{index}, {self.location_type}).\n"
+
+    @staticmethod
+    def compute_relation(
+        location: CartesianLocation, r_tree: STRtree, original_geometries: CartesianMap, **kwargs
+    ) -> float:
+        # check signature
+        if not "speed" in kwargs and not "bearing" in kwargs:
+            raise KeyError(f"compute_relation called with insufficient kwargs. Expected 'bearing' and 'speed', got {kwargs}")
+        if not "dt" in kwargs:
+            raise KeyError(f"compute_relation called with insufficient kwargs. Expected 'dt', got {kwargs}")
+
+        speed = kwargs["speed"]
+        bearing = deg2rad(kwargs["bearing"])
+        dt = kwargs["dt"]
+
+        velocity = dt * speed / 3.6 * array([sin(bearing), cos(bearing)]).reshape((2,1))  # m/s, naive prognosis with given timestep
+        trajectory = LineString([location.geometry, (location + velocity).geometry])
+        geometry = r_tree.geometries.take(r_tree.nearest(location.geometry))
+        # no need to check for loc type as all geometries we get are previously filtered
+        return trajectory.crosses(geometry)
+
+    @staticmethod
+    def empty_map_parameters() -> list[float]:
+        return [0.0, 0.0]
+
+    @staticmethod
+    def arity() -> int:
+        return 2

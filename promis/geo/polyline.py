@@ -35,6 +35,7 @@ class PolyLine(Geospatial):
         name: str | None = None,
         identifier: int | None = None,
         covariance: ndarray | None = None,
+        tags: dict[str, str | None] | None = {},
     ) -> None:
         # Assertions on the given locations
         assert len(locations) >= 2, "A PolyLine must contain at least two points!"
@@ -47,6 +48,12 @@ class PolyLine(Geospatial):
 
         # Setup Geospatial
         super().__init__(location_type=location_type, name=name, identifier=identifier)
+        
+        # Setup tags
+        self.tags = tags
+        self.tags.setdefault("lanes", "1")
+        self.tags.setdefault("maxspeed", "-1")
+        self.tags.setdefault("oneway", "no")
 
     @property
     def covariance(self) -> ndarray:
@@ -77,7 +84,7 @@ class PolyLine(Geospatial):
         if self.distribution is None:
             return [
                 type(self)(
-                    self.locations, self.location_type, self.name, self.identifier, self.covariance
+                    self.locations, self.location_type, self.name, self.identifier, self.covariance, tags=self.tags
                 )
             ] * number_of_samples
 
@@ -94,6 +101,7 @@ class PolyLine(Geospatial):
                     self.name,
                     self.identifier,
                     self.covariance,
+                    tags=self.tags,
                 )
             )
 
@@ -140,9 +148,10 @@ class PolarPolyLine(PolyLine):
         name: str | None = None,
         identifier: int | None = None,
         covariance: ndarray | None = None,
+        tags: dict[str, str | None] | None = {},
     ) -> None:
         # Setup PolyLine
-        super().__init__(locations, location_type, name, identifier, covariance)
+        super().__init__(locations, location_type, name, identifier, covariance, tags)
 
     def to_cartesian(self, origin: PolarLocation) -> "CartesianPolyLine":
         """Projects this polyline to a Cartesian one according to the given global reference.
@@ -166,6 +175,7 @@ class PolarPolyLine(PolyLine):
             location_type=self.location_type,
             name=self.name,
             identifier=self.identifier,
+            tags=self.tags,
             covariance=radians_to_meters(
                 array(
                     [radians(degree) for degree in self.distribution.covariance.reshape(4)]
@@ -234,13 +244,28 @@ class CartesianPolyLine(PolyLine):
         identifier: int | None = None,
         covariance: ndarray | None = None,
         origin: PolarLocation | None = None,
+        tags: dict[str, str | None] | None = {},
     ):
         # Setup attributes
         self.origin = origin
         self.geometry = LineString([location.geometry.coords[0] for location in locations])
 
         # Setup PolyLine
-        PolyLine.__init__(self, locations, location_type, name, identifier, covariance)
+        PolyLine.__init__(self, locations, location_type, name, identifier, covariance, tags)
+
+    def sample(self, number_of_samples: int = 1) -> list[DerivedPolyLine]:
+        """Sample PolyLines given this PolyLine's uncertainty.
+
+        Args:
+            number_of_samples: How many samples to draw
+
+        Returns:
+            The set of sampled PolyLines, each with same name, identifier etc.
+        """
+        samples: list[CartesianPolyLine] = super().sample(number_of_samples)
+        for sample in samples:
+            sample.origin = self.origin
+        return samples
 
     def to_polar(self, origin: PolarLocation | None = None) -> PolarPolyLine:
         """Computes the polar representation of this polyline.
@@ -276,6 +301,7 @@ class CartesianPolyLine(PolyLine):
             location_type=self.location_type,
             name=self.name,
             identifier=self.identifier,
+            tags=self.tags,
             covariance=array(
                 [degrees(rad) for rad in meters_to_radians(self.distribution.covariance).reshape(4)]
             ).reshape(2, 2)

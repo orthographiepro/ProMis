@@ -13,13 +13,15 @@ from typing import TypeAlias
 
 # ProMis
 from promis.geo.collection import CartesianCollection, Collection, PolarCollection
+from promis.geo.delta_collection import CartesianDeltaCollection, DeltaCollection, PolarDeltaCollection
 from promis.geo.geospatial import Geospatial
 from promis.geo.helpers import Direction
 from promis.geo.location import CartesianLocation, Location, PolarLocation
 from promis.geo.map import CartesianMap, Map, PolarMap
-from promis.geo.polygon import CartesianPolygon, PolarPolygon
+from promis.geo.polygon import BufferedCartesianPolygon, BufferedPolarPolygon, BufferedPolygon, CartesianPolygon, PolarPolygon
 from promis.geo.polyline import CartesianPolyLine, PolarPolyLine, PolyLine
 from promis.geo.raster_band import CartesianRasterBand, PolarRasterBand, RasterBand
+from promis.geo.delta_grid import DeltaGrid
 
 # Type aliases
 CartesianGeometry: TypeAlias = CartesianLocation | CartesianMap | CartesianPolygon | CartesianPolyLine
@@ -27,6 +29,9 @@ PolarGeometry: TypeAlias = PolarLocation | PolarMap | PolarPolygon | PolarPolyLi
 
 
 __all__ = [
+    "BufferedCartesianPolygon",
+    "BufferedPolarPolygon",
+    "BufferedPolygon",
     "CartesianCollection",
     "Collection",
     "CartesianGeometry",
@@ -45,6 +50,10 @@ __all__ = [
     "PolarMap",
     "PolarPolygon",
     "PolarRasterBand",
+    "DeltaCollection",
+    "CartesianDeltaCollection",
+    "PolarDeltaCollection",
+    "DeltaGrid",
     "PolarPolyLine",
     "PolyLine",
     "RasterBand",

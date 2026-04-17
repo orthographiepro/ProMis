@@ -42,7 +42,7 @@ class Over(Relation):
 
     @staticmethod
     def compute_relation(
-        location: CartesianLocation, r_tree: STRtree, original_geometries: CartesianMap
+        location: CartesianLocation, r_tree: STRtree, original_geometries: CartesianMap, **kwargs
     ) -> float:
         """Checks if a location is within any of the geometries in the map.
 

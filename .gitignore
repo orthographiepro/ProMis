@@ -279,6 +279,8 @@ dist
 .idea
 
 # Folders with derived content
+examples/**/*.svg
+examples/**/*.csv
 examples/**/*.pkl
 examples/**/*.npy
 examples/**/*.npz

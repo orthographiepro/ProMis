@@ -13,12 +13,14 @@ import logging
 from time import sleep
 
 # Third Party
+
+from overpy import Overpass, Relation
 from overpy import Overpass, Relation, exception
 from shapely.geometry import LineString
 from shapely.ops import linemerge, polygonize
 
 # ProMis
-from promis.geo import CartesianLocation, PolarLocation, PolarPolygon, PolarPolyLine
+from promis.geo import BufferedPolarPolygon, CartesianLocation, PolarLocation, PolarPolygon, PolarPolyLine
 from promis.loaders.spatial_loader import SpatialLoader
 
 log = logging.getLogger(__name__)
@@ -49,6 +51,7 @@ class OsmLoader(SpatialLoader):
         origin: PolarLocation,
         dimensions: tuple[float, float],
         feature_description: dict[str, str | list[str]] | None = None,
+        polygonize_routes = False,
         timeout: float = 5.0
     ):
         # Initialize Overpass API
@@ -56,6 +59,7 @@ class OsmLoader(SpatialLoader):
         self.timeout = timeout
         super().__init__(origin, dimensions)
 
+        self.polygonize_routes = polygonize_routes
         if feature_description is not None:
             self.load(feature_description)
 
@@ -134,14 +138,22 @@ class OsmLoader(SpatialLoader):
                 PolarLocation(latitude=float(node.lat), longitude=float(node.lon))
                 for node in way.nodes
             ]
+            tags = dict((k, way.tags[k]) for k in ["oneway", "lanes", "maxspeed"] if k in way.tags)
+            way_name = way.tags.get("name", None)
             if len(nodes) < 2:
                 continue
 
             # A way is considered closed if its first and last nodes are identical.
             if way.nodes[0].id == way.nodes[-1].id and len(nodes) > 2:
-                self.features.append(PolarPolygon(nodes, location_type=location_type))
+                self.features.append(PolarPolygon(nodes, location_type=location_type, name=way_name, tags=tags))
             else:
-                self.features.append(PolarPolyLine(nodes, location_type=location_type))
+                polyline = PolarPolyLine(nodes, location_type=location_type, name=way_name, tags=tags)
+                if self.polygonize_routes:
+                    polygon = BufferedPolarPolygon.buffer_polyline(polyline)
+                    self.features.append(polygon)
+                    self.features.extend(polygon.split_sides())
+                else:
+                    self.features.append(polyline)
 
     def _load_relations(self, osm_filter: str, location_type: str, bounding_box: str) -> None:
         """Loads relations from OSM and converts them to polygons.

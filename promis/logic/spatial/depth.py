@@ -44,7 +44,7 @@ class Depth(ScalarRelation):
 
     @staticmethod
     def compute_relation(
-        location: CartesianLocation, r_tree: STRtree, original_geometries: CartesianMap
+        location: CartesianLocation, r_tree: STRtree, original_geometries: CartesianMap, **kwargs
     ) -> float:
         """Computes the depth at a location based on the nearest water feature.
 

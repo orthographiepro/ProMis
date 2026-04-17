@@ -18,8 +18,8 @@ from rich.progress import track
 # ProMis
 from promis.geo import CartesianCollection
 from promis.logic import Solver
+from promis.logic.spatial import DiscreteRelation
 from promis.star_map import StaRMap
-
 
 class ProMis:
     """The ProMis engine to create Probabilistic Mission Landscapes."""
@@ -63,12 +63,14 @@ class ProMis:
         """
 
         # Get all relevant relations from the StaRMap
-        relations = self.star_map.get_all(logic)
+        relations = self.star_map.get_all(None)
         for relation_type in relations.keys():
             for location_type in relations[relation_type].keys():
                 relation = relations[relation_type][location_type]
                 relation.parameters = relation.parameters.into(
-                    evaluation_points, interpolation_method, in_place=False
+                    evaluation_points, 
+                    interpolation_method if not isinstance(relation, DiscreteRelation) else "nearest",
+                    in_place=False
                 )
 
         # For each point in the target CartesianCollection, we need to run a query
@@ -92,6 +94,7 @@ class ProMis:
                         relation = relations[relation_type][location_type]
                         program += relation.index_to_distributional_clause(batch_index)
 
+                program += self._generate_state_info(batch_index, evaluation_points)
                 program += queries[batch_index]
 
             # Add program to collection
@@ -183,3 +186,21 @@ class ProMis:
     @staticmethod
     def _run_inference(solver: Solver) -> list[float]:
         return solver.inference()
+
+    @staticmethod
+    def _generate_state_info(index: int, evaluation_points: CartesianCollection) -> str:
+        """Produces the Problog-facts describing the given state.
+        For a column named "speed" with the value 30, the created fact would be "state_speed(30)"
+
+        Args:
+            index (int): which entry of evaluation points to use
+            evaluation_points (CartesianCollection): the data on all states
+
+        Returns:
+            str: The Problog facts as a string
+        """
+        state = evaluation_points.data.iloc[index]
+        return "\n".join([
+            f"state_{evaluation_points.data.columns[i]}(x_{index}, {state[i]})."
+            for i in range(len(state) - evaluation_points.number_of_values)
+        ])+"\n"

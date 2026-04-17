@@ -12,7 +12,6 @@
 from collections import defaultdict
 from collections.abc import Callable, Iterable
 from copy import deepcopy
-from pickle import dump, load
 from re import finditer
 from traceback import format_exception
 from warnings import warn
@@ -20,10 +19,11 @@ from warnings import warn
 # Third Party
 from numpy import array
 from numpy.typing import NDArray
+from pickle import dump, load
 
 # ProMis
-from promis.geo import CartesianCollection, CartesianMap
-from promis.logic.spatial import Depth, Distance, Over, Relation
+from promis.geo import CartesianCollection, CartesianDeltaCollection, CartesianMap, Collection
+from promis.logic.spatial import Angle, Depth, Distance, Over, Relation, MaxVelocity, Crosses, DiscreteRelation, OnRightSide, Follows, DeltaRelation
 
 
 class StaRMap:
@@ -42,7 +42,14 @@ class StaRMap:
         uam: CartesianMap,
     ) -> None:
         self.uam = uam
-        self.relations: dict[str, dict[str, Relation]] = {"over": {}, "distance": {}, "depth": {}}
+        self.relations: dict[str, dict[str, Relation]] = {
+            "over": {}, 
+            "distance": {}, 
+            "depth": {},
+            "maxspeed": {},
+            "on_right_side": {},
+            "angle": {},
+        }
 
     def initialize(self, evaluation_points: CartesianCollection, number_of_random_maps: int, logic: str):
         """Setup the StaRMap for a given set of support points, number of samples and logic.
@@ -57,8 +64,8 @@ class StaRMap:
             evaluation_points, number_of_random_maps, self._get_mentioned_relations(logic)
         )
 
-    @staticmethod
-    def relation_name_to_class(relation: str) -> Relation:
+    # @staticmethod
+    def relation_name_to_class(self, relation: str) -> Relation:
         """Get the class for a given relation name.
 
         Args:
@@ -78,6 +85,12 @@ class StaRMap:
                 return Distance
             case "depth":
                 return Depth
+            case "maxspeed":
+                return MaxVelocity
+            case "on_right_side":
+                return OnRightSide
+            case "angle":
+                return Angle
             case _:
                 raise NotImplementedError(f'Requested unknown relation "{relation}" from StaR Map')
 
@@ -194,18 +207,20 @@ class StaRMap:
             full_pattern = rf"({name})\(X{relates_to}\)"
 
             for match in finditer(full_pattern, logic):
-                match arity:
-                    case 1:
-                        raise Exception(
-                            "Arity 1 is not supported because it always needs a location type"
-                        )
-                    case 2:
+                if arity == 1:
+                    raise Exception(
+                        "Arity 1 is not supported because it always needs a location type"
+                    )
+                elif arity in [2, 3]:
                         location_type = match.group(2)
                         if location_type[0] in "'\"":  # Remove quotes
                             location_type = location_type[1:-1]
+                        if location_type[0].isupper():
+                            # location_type is a problog variable. unlikely to find an uam correspondence
+                            continue
                         relations[name].add(location_type)
-                    case _:
-                        raise Exception(f"Only arity 2 is supported, but got {arity}")
+                else:
+                    raise Exception(f"Only arity 2 is supported, but got {arity}")
 
         return relations
 
@@ -311,12 +326,16 @@ class StaRMap:
             return array([relation_class.empty_map_parameters()] * coordinates.shape[0])
 
         try:
-            collection = CartesianCollection(self.uam.origin)
+            collection = self._make_collection(self.uam.origin)
             collection.append_with_default(coordinates, 0.0)
 
-            return relation_class.from_r_trees(
+            initialized_relation = relation_class.from_r_trees(
                 collection, r_trees, location_type, original_geometries=random_maps
-            ).parameters.values()
+            )
+
+            if issubclass(relation_class, DiscreteRelation):
+                self.relations[relation][location_type].set_cases(initialized_relation.cases)
+            return initialized_relation.parameters.values()
 
         except Exception as e:
             warn(
@@ -349,7 +368,7 @@ class StaRMap:
         """
 
         what = self.relation_and_location_types if what is None else what
-        all_location_types = [location_type for types in what.values() for location_type in types]
+        all_location_types = {location_type for types in what.values() for location_type in types}
         coordinates = evaluation_points.coordinates()
 
         for location_type in all_location_types:
@@ -362,12 +381,88 @@ class StaRMap:
 
                 if location_type not in self.relations[relation].keys():
                     self.relations[relation][location_type] = self.relation_name_to_class(relation)(
-                        CartesianCollection(self.uam.origin, 2),
+                        self._make_collection(self.uam.origin, 2),
                         location_type
                     )
-
-                # Update collection of sample points
+                #TODO hier die values entsprechend der Rückgabe von compute anpassen
+                vals = self._compute_parameters(coordinates, relation, location_type, r_trees, random_maps)
                 self.relations[relation][location_type].parameters.append(
                     coordinates,
-                    self._compute_parameters(coordinates, relation, location_type, r_trees, random_maps)
+                    vals, 
                 )
+
+    @staticmethod
+    def _make_collection(origin, number_of_values=1) -> Collection:
+        return CartesianCollection(origin, number_of_values)
+
+class DeltaStaRMap(StaRMap):
+    def __init__(self, uam, dt = 1.0):
+        super().__init__(uam)
+        self.relations.update({
+            "crosses": {},
+            "follows": {},
+        })
+        self.dt = dt
+
+    # @staticmethod
+    def relation_name_to_class(self, relation: str) -> Relation:
+        match relation:
+            case "crosses":
+                # causes pickling problems... also with dill
+                # class DCrosses(Crosses): 
+                #     dt = self.dt
+                # return DCrosses
+                return CROSSES_LOOKUP[self.dt]
+            case "follows":
+                return FOLLOWS_LOOKUP[self.dt]
+            case _:
+                return StaRMap.relation_name_to_class(self, relation)
+
+    @staticmethod
+    def _make_collection(origin, number_of_values=1) -> Collection:
+        return CartesianDeltaCollection(origin, number_of_values)
+
+# class definitions as hotfix for pickling issue
+class Follows05(Follows):
+    dt = 0.5
+class Follows10(Follows):
+    dt = 1
+class Follows15(Follows):
+    dt = 1.5
+class Follows20(Follows):
+    dt = 2.0
+class Follows30(Follows):
+    dt = 3.0
+class Follows40(Follows):
+    dt = 4.0
+
+class Crosses05(Crosses): 
+    dt = 0.5
+class Crosses10(Crosses): 
+    dt = 1.0
+class Crosses15(Crosses): 
+    dt = 1.5
+class Crosses20(Crosses): 
+    dt = 2.0
+class Crosses30(Crosses): 
+    dt = 3.0
+class Crosses40(Crosses): 
+    dt = 4.0
+
+CROSSES_LOOKUP = {
+    0.5: Crosses05,
+    1.0: Crosses10,
+    1.5: Crosses15,
+    2.0: Crosses20,
+    3.0: Crosses30,
+    4.0: Crosses40
+}
+
+FOLLOWS_LOOKUP = {
+    0.5: Follows05,
+    1.0: Follows10,
+    1.5: Follows15,
+    2.0: Follows20,
+    3.0: Follows30,
+    4.0: Follows40,
+}
