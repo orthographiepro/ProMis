@@ -94,16 +94,21 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.patches</span><span class="w"> </span><span class="kn">import</span> <span class="n">PathPatch</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.path</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">array</span><span class="p">,</span> <span class="n">asarray</span><span class="p">,</span> <span class="n">isfinite</span><span class="p">,</span> <span class="n">ndarray</span><span class="p">,</span> <span class="n">vstack</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">shapely.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Polygon</span> <span class="k">as</span> <span class="n">ShapelyPolygon</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">shapely.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Polygon</span> <span class="k">as</span> <span class="n">ShapelyPolygon</span><span class="p">,</span> <span class="n">LineString</span><span class="p">,</span> <span class="n">MultiPolygon</span><span class="p">,</span> <span class="n">Point</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">shapely.ops</span><span class="w"> </span><span class="kn">import</span> <span class="n">split</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="c1"># ProMis</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">promis.geo.geospatial</span><span class="w"> </span><span class="kn">import</span> <span class="n">Geospatial</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">promis.geo.helpers</span><span class="w"> </span><span class="kn">import</span> <span class="n">meters_to_radians</span><span class="p">,</span> <span class="n">radians_to_meters</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">promis.geo.helpers</span><span class="w"> </span><span class="kn">import</span> <span class="n">meters_to_radians</span><span class="p">,</span> <span class="n">radians_to_meters</span><span class="p">,</span> <span class="n">calculate_street_width</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">promis.geo.location</span><span class="w"> </span><span class="kn">import</span> <span class="n">CartesianLocation</span><span class="p">,</span> <span class="n">PolarLocation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">promis.geo.polyline</span><span class="w"> </span><span class="kn">import</span> <span class="n">CartesianPolyLine</span><span class="p">,</span> <span class="n">PolarPolyLine</span><span class="p">,</span> <span class="n">PolyLine</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">promis.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Gaussian</span>
 
 <span class="c1">#: Helper to define &lt;Polar|Cartesian&gt;Location operatios within base class</span>
 <span class="n">DerivedPolygon</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;DerivedPolygon&quot;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="s2">&quot;Polygon&quot;</span><span class="p">)</span>
+<span class="n">DerivedBufferedPolygon</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;DerivedPolygon&quot;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="s2">&quot;BufferedPolygon&quot;</span><span class="p">)</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Polygon</span><span class="p">(</span><span class="n">Geospatial</span><span class="p">):</span>
@@ -115,6 +120,7 @@
         <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">identifier</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">covariance</span><span class="p">:</span> <span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> 
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># Assertions on the given locations</span>
         <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">locations</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">,</span> <span class="s2">&quot;A polygon must contain at least three points!&quot;</span>
@@ -133,6 +139,12 @@
         <span class="c1"># Setup Gaussian distribution for sampling the polygon</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">covariance</span> <span class="o">=</span> <span class="n">covariance</span>
 
+        <span class="c1"># Setup tags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tags</span> <span class="o">=</span> <span class="n">tags</span> <span class="k">if</span> <span class="n">tags</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;lanes&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;maxspeed&quot;</span><span class="p">,</span> <span class="s2">&quot;-1&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;oneway&quot;</span><span class="p">,</span> <span class="s2">&quot;no&quot;</span><span class="p">)</span>
+        
         <span class="c1"># Setup Geospatial</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">location_type</span><span class="o">=</span><span class="n">location_type</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">identifier</span><span class="o">=</span><span class="n">identifier</span><span class="p">)</span>
 
@@ -175,6 +187,7 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">covariance</span><span class="p">,</span>
+                    <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="p">]</span> <span class="o">*</span> <span class="n">number_of_samples</span>
 
@@ -197,9 +210,11 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">covariance</span><span class="p">,</span>
+                    <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
                 <span class="p">)</span>
             <span class="p">)</span>
-
+        
+        
         <span class="k">return</span> <span class="n">sampled_polygons</span>
 
 
@@ -267,9 +282,10 @@
         <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">identifier</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">covariance</span><span class="p">:</span> <span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># Setup Polygon</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">locations</span><span class="p">,</span> <span class="n">holes</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">covariance</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">locations</span><span class="p">,</span> <span class="n">holes</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">covariance</span><span class="p">,</span> <span class="n">tags</span><span class="p">)</span>
 
 <div class="viewcode-block" id="PolarPolygon.from_numpy">
 <a class="viewcode-back" href="../../../api.html#promis.geo.PolarPolygon.from_numpy">[docs]</a>
@@ -331,6 +347,7 @@
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
             <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
             <span class="n">origin</span><span class="o">=</span><span class="n">origin</span><span class="p">,</span>
+            <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span>
         <span class="p">)</span></div>
 
 
@@ -406,6 +423,7 @@
         <span class="n">identifier</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">covariance</span><span class="p">:</span> <span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">origin</span><span class="p">:</span> <span class="n">PolarLocation</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># Setup attributes</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">origin</span> <span class="o">=</span> <span class="n">origin</span>
@@ -419,7 +437,7 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">geometry</span> <span class="o">=</span> <span class="n">ShapelyPolygon</span><span class="p">([</span><span class="n">location</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">location</span> <span class="ow">in</span> <span class="n">locations</span><span class="p">])</span>
 
         <span class="c1"># Setup Polygon</span>
-        <span class="n">Polygon</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">locations</span><span class="p">,</span> <span class="n">holes</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">covariance</span><span class="p">)</span>
+        <span class="n">Polygon</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">locations</span><span class="p">,</span> <span class="n">holes</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">covariance</span><span class="p">,</span> <span class="n">tags</span><span class="p">)</span>
 
 <div class="viewcode-block" id="CartesianPolygon.from_numpy">
 <a class="viewcode-back" href="../../../api.html#promis.geo.CartesianPolygon.from_numpy">[docs]</a>
@@ -503,6 +521,7 @@
             <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
             <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span>
         <span class="p">)</span></div>
 
 
@@ -582,6 +601,232 @@
             <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
         <span class="p">)</span></div>
 </div>
+
+    
+<div class="viewcode-block" id="BufferedPolygon">
+<a class="viewcode-back" href="../../../api.html#promis.geo.BufferedPolygon">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BufferedPolygon</span><span class="p">(</span><span class="n">Polygon</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">polyline</span><span class="p">:</span> <span class="n">CartesianPolyLine</span> <span class="o">|</span> <span class="n">PolarPolyLine</span><span class="p">,</span> <span class="n">locations</span><span class="p">,</span> <span class="n">holes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">location_type</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">identifier</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">covariance</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">tags</span> <span class="o">=</span> <span class="p">{}):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">locations</span><span class="p">,</span> <span class="n">holes</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">covariance</span><span class="p">,</span> <span class="n">tags</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">polyline</span> <span class="o">=</span> <span class="n">polyline</span>
+
+<div class="viewcode-block" id="BufferedPolygon.buffer_polyline">
+<a class="viewcode-back" href="../../../api.html#promis.geo.BufferedPolygon.buffer_polyline">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">buffer_polyline</span><span class="p">(</span><span class="n">polyline</span><span class="p">:</span> <span class="n">PolyLine</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DerivedBufferedPolygon</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Turn a PolarPolyLine into a BufferedPolygon based on usual street widths. </span>
+<span class="sd">        Keep tags and reference to original PolyLine.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            polyline (PolarPolyLine): The PolyLine you want to buffer</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            PolarPolygon: The buffered PolarPolygon.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="BufferedPolygon.sample">
+<a class="viewcode-back" href="../../../api.html#promis.geo.BufferedPolygon.sample">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">number_of_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">DerivedBufferedPolygon</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sample a BufferedPolygon given this polygon&#39;s uncertainty.</span>
+<span class="sd">        As opposed to other Polygons, here the underlying PolyLine is sampled and then buffered again</span>
+<span class="sd">        to create the sampled Polygons.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            number_of_samples: How many samples to draw</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The set of sampled polygons, each with same name, identifier etc.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">covariance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">covariance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">distribution</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">buffer_polyline</span><span class="p">(</span><span class="n">sampled_polyline</span><span class="p">)</span> <span class="k">for</span> <span class="n">sampled_polyline</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">number_of_samples</span><span class="p">)]</span>
+        <span class="k">return</span> <span class="n">samples</span></div>
+</div>
+
+    
+<div class="viewcode-block" id="BufferedPolarPolygon">
+<a class="viewcode-back" href="../../../api.html#promis.geo.BufferedPolarPolygon">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BufferedPolarPolygon</span><span class="p">(</span><span class="n">BufferedPolygon</span><span class="p">,</span> <span class="n">PolarPolygon</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">polyline</span><span class="p">:</span> <span class="n">PolarPolyLine</span><span class="p">,</span> <span class="n">locations</span><span class="p">,</span> <span class="n">holes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">location_type</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">identifier</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">covariance</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">tags</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">BufferedPolygon</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">polyline</span><span class="p">,</span> <span class="n">locations</span><span class="p">,</span> <span class="n">holes</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">covariance</span><span class="p">,</span> <span class="n">tags</span><span class="p">)</span>
+        <span class="n">PolarPolygon</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">locations</span><span class="p">,</span> <span class="n">holes</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">covariance</span><span class="p">,</span> <span class="n">tags</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">locations</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">loc</span><span class="p">)</span> <span class="k">for</span> <span class="n">loc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">)</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;BufferedPolarPolygon(locations=[</span><span class="si">{</span><span class="n">locations</span><span class="si">}</span><span class="s2">], polyline=</span><span class="si">{</span><span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_repr_extras</span><span class="si">}</span><span class="s2">)&quot;</span>
+
+<div class="viewcode-block" id="BufferedPolarPolygon.to_cartesian">
+<a class="viewcode-back" href="../../../api.html#promis.geo.BufferedPolarPolygon.to_cartesian">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_cartesian</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">origin</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">origin</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">cartesian_pg</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">to_cartesian</span><span class="p">(</span><span class="n">origin</span><span class="p">)</span>
+        <span class="n">cartesian_pl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">to_cartesian</span><span class="p">(</span><span class="n">origin</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">BufferedCartesianPolygon</span><span class="p">(</span>
+            <span class="n">polyline</span><span class="o">=</span><span class="n">cartesian_pl</span><span class="p">,</span>
+            <span class="n">locations</span><span class="o">=</span><span class="n">cartesian_pg</span><span class="o">.</span><span class="n">locations</span><span class="p">,</span>
+            <span class="n">holes</span><span class="o">=</span><span class="n">cartesian_pg</span><span class="o">.</span><span class="n">holes</span><span class="p">,</span>
+            <span class="n">location_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">location_type</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">identifier</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span>
+            <span class="n">covariance</span><span class="o">=</span><span class="n">cartesian_pg</span><span class="o">.</span><span class="n">covariance</span><span class="p">,</span>
+            <span class="n">origin</span><span class="o">=</span><span class="n">origin</span><span class="p">,</span>
+            <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="BufferedPolarPolygon.split_sides">
+<a class="viewcode-back" href="../../../api.html#promis.geo.BufferedPolarPolygon.split_sides">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">split_sides</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">PolarPolygon</span><span class="p">]:</span>
+        <span class="n">cartesian</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_cartesian</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">cartesian_part</span><span class="o">.</span><span class="n">to_polar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">for</span> <span class="n">cartesian_part</span> <span class="ow">in</span> <span class="n">cartesian</span><span class="o">.</span><span class="n">split_sides</span><span class="p">()]</span></div>
+
+    
+
+<div class="viewcode-block" id="BufferedPolarPolygon.buffer_polyline">
+<a class="viewcode-back" href="../../../api.html#promis.geo.BufferedPolarPolygon.buffer_polyline">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">buffer_polyline</span><span class="p">(</span><span class="n">polyline</span><span class="p">:</span> <span class="n">PolarPolyLine</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;BufferedPolarPolygon&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Turn a PolarPolyLine into a BufferedPolarPolygon based on usual street widths. </span>
+<span class="sd">        Keep tags and reference to original PolyLine, which is used for sampling.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            polyline (PolarPolyLine): The PolyLine you want to buffer</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            BufferedPolarPolygon: The buffered PolarPolygon.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="n">calculate_street_width</span><span class="p">(</span><span class="n">polyline</span><span class="p">)</span>
+        <span class="n">location_type</span> <span class="o">=</span> <span class="n">polyline</span><span class="o">.</span><span class="n">location_type</span>
+        <span class="n">origin</span> <span class="o">=</span> <span class="n">polyline</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="n">polyline</span><span class="o">.</span><span class="n">tags</span> <span class="o">|</span> <span class="p">{</span><span class="s2">&quot;line&quot;</span><span class="p">:</span> <span class="n">polyline</span><span class="p">}</span>
+
+        <span class="n">line</span> <span class="o">=</span> <span class="n">LineString</span><span class="p">([</span><span class="n">loc</span><span class="o">.</span><span class="n">to_cartesian</span><span class="p">(</span><span class="n">origin</span><span class="p">)</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="k">for</span> <span class="n">loc</span> <span class="ow">in</span> <span class="n">polyline</span><span class="o">.</span><span class="n">locations</span><span class="p">])</span>
+        <span class="n">buffer</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="n">width</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">exterior</span> <span class="o">=</span> <span class="n">buffer</span><span class="o">.</span><span class="n">geoms</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">exterior</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">MultiPolygon</span><span class="p">)</span> <span class="k">else</span> <span class="n">buffer</span><span class="o">.</span><span class="n">exterior</span>
+        <span class="k">return</span> <span class="n">BufferedPolarPolygon</span><span class="p">(</span>
+                <span class="n">polyline</span><span class="o">=</span><span class="n">polyline</span><span class="p">,</span>
+                <span class="n">locations</span><span class="o">=</span><span class="p">[</span>
+                    <span class="n">CartesianLocation</span><span class="p">(</span><span class="o">*</span><span class="n">point</span><span class="p">,</span> <span class="n">location_type</span><span class="o">=</span><span class="n">location_type</span><span class="p">)</span>
+                    <span class="o">.</span><span class="n">to_polar</span><span class="p">(</span><span class="n">origin</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">exterior</span><span class="o">.</span><span class="n">coords</span>
+                <span class="p">],</span>
+                <span class="n">location_type</span><span class="o">=</span><span class="n">location_type</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">polyline</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> 
+                <span class="n">identifier</span><span class="o">=</span><span class="n">polyline</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span> <span class="c1"># TODO: do they need to be unique?</span>
+                <span class="n">covariance</span><span class="o">=</span><span class="n">polyline</span><span class="o">.</span><span class="n">covariance</span><span class="p">,</span>
+                <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">,</span>
+            <span class="p">)</span></div>
+</div>
+
+
+<div class="viewcode-block" id="BufferedCartesianPolygon">
+<a class="viewcode-back" href="../../../api.html#promis.geo.BufferedCartesianPolygon">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BufferedCartesianPolygon</span><span class="p">(</span><span class="n">BufferedPolygon</span><span class="p">,</span> <span class="n">CartesianPolygon</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">polyline</span><span class="p">:</span> <span class="n">CartesianPolyLine</span><span class="p">,</span> <span class="n">locations</span><span class="p">,</span> <span class="n">holes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">location_type</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">identifier</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">covariance</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">origin</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">tags</span> <span class="o">=</span> <span class="p">{}):</span>
+        <span class="n">BufferedPolygon</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">polyline</span><span class="p">,</span> <span class="n">locations</span><span class="p">,</span> <span class="n">holes</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">covariance</span><span class="p">,</span> <span class="n">tags</span><span class="p">)</span>
+        <span class="n">CartesianPolygon</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">locations</span><span class="p">,</span> <span class="n">holes</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">covariance</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="n">tags</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">locations</span> <span class="o">=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">loc</span><span class="p">)</span> <span class="k">for</span> <span class="n">loc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">)</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;BufferedCartesianPolygon(locations=[</span><span class="si">{</span><span class="n">locations</span><span class="si">}</span><span class="s2">], polyline=</span><span class="si">{</span><span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="p">)</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_repr_extras</span><span class="si">}</span><span class="s2">)&quot;</span>
+    
+<div class="viewcode-block" id="BufferedCartesianPolygon.to_polar">
+<a class="viewcode-back" href="../../../api.html#promis.geo.BufferedCartesianPolygon.to_polar">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_polar</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">polar_pg</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">to_polar</span><span class="p">(</span><span class="n">origin</span><span class="p">)</span>
+        <span class="n">polar_pl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">to_polar</span><span class="p">(</span><span class="n">origin</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">BufferedPolarPolygon</span><span class="p">(</span>
+            <span class="n">polyline</span><span class="o">=</span><span class="n">polar_pl</span><span class="p">,</span>
+            <span class="n">locations</span><span class="o">=</span><span class="n">polar_pg</span><span class="o">.</span><span class="n">locations</span><span class="p">,</span>
+            <span class="n">holes</span><span class="o">=</span><span class="n">polar_pg</span><span class="o">.</span><span class="n">holes</span><span class="p">,</span>
+            <span class="n">location_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">location_type</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">identifier</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span>
+            <span class="n">covariance</span><span class="o">=</span><span class="n">polar_pg</span><span class="o">.</span><span class="n">covariance</span><span class="p">,</span>
+            <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BufferedCartesianPolygon.split_sides">
+<a class="viewcode-back" href="../../../api.html#promis.geo.BufferedCartesianPolygon.split_sides">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">split_sides</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">CartesianPolygon</span><span class="p">]:</span>
+        <span class="n">last_diff</span><span class="p">:</span> <span class="n">CartesianLocation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="n">last_diff</span> <span class="o">=</span> <span class="n">last_diff</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="n">last_diff</span> <span class="o">*=</span> <span class="mi">20</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">distance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">])</span>
+        <span class="n">last</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">last_diff</span>
+
+        <span class="n">first_diff</span><span class="p">:</span><span class="n">CartesianLocation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="n">first_diff</span> <span class="o">=</span> <span class="n">first_diff</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="n">first_diff</span> <span class="o">*=</span> <span class="mi">20</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">distance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">first</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">first_diff</span>
+
+        <span class="n">helper</span> <span class="o">=</span> <span class="n">CartesianPolyLine</span><span class="p">([</span><span class="n">first</span><span class="p">,</span> <span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">polyline</span><span class="o">.</span><span class="n">locations</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="p">,</span><span class="n">last</span><span class="p">])</span>
+
+        <span class="n">collection</span> <span class="o">=</span> <span class="n">split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">geometry</span><span class="p">,</span> <span class="n">helper</span><span class="o">.</span><span class="n">geometry</span><span class="p">)</span>
+        
+        <span class="n">point</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">collection</span><span class="o">.</span><span class="n">geoms</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">exterior</span><span class="o">.</span><span class="n">xy</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">street_line</span> <span class="o">=</span> <span class="n">helper</span><span class="o">.</span><span class="n">geometry</span>
+        <span class="n">distances</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">LineString</span><span class="p">([</span><span class="n">street_line</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">street_line</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]])</span><span class="o">.</span><span class="n">distance</span><span class="p">(</span><span class="n">Point</span><span class="p">(</span><span class="n">point</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">street_line</span><span class="o">.</span><span class="n">coords</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="n">nearest_index</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="n">distances</span><span class="p">),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">p1</span> <span class="o">=</span> <span class="n">street_line</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="n">nearest_index</span><span class="p">]</span>
+        <span class="n">p2</span> <span class="o">=</span> <span class="n">street_line</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="n">nearest_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="n">cross_product</span> <span class="o">=</span> <span class="p">(</span><span class="n">p2</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">p1</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">*</span> <span class="p">(</span><span class="n">point</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">p1</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">-</span> \
+            <span class="p">(</span><span class="n">p2</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">p1</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">*</span> <span class="p">(</span><span class="n">point</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">p1</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        
+        <span class="n">left_first</span> <span class="o">=</span> <span class="n">cross_product</span> <span class="o">&gt;</span> <span class="mi">0</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;left&quot;</span><span class="p">,</span> <span class="s2">&quot;right&quot;</span><span class="p">]</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">labels</span> <span class="k">if</span> <span class="n">left_first</span> <span class="k">else</span> <span class="n">labels</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        
+        <span class="k">return</span> <span class="p">[</span><span class="n">CartesianPolygon</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">geo</span><span class="o">.</span><span class="n">exterior</span><span class="o">.</span><span class="n">xy</span><span class="p">),</span> 
+            <span class="n">location_type</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">side</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">location_type</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">identifier</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span>
+            <span class="n">covariance</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">covariance</span><span class="p">,</span>
+            <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span>
+        <span class="p">)</span> <span class="k">for</span> <span class="n">geo</span><span class="p">,</span> <span class="n">side</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">collection</span><span class="o">.</span><span class="n">geoms</span><span class="p">,</span> <span class="n">labels</span><span class="p">)]</span></div>
+
+
+<div class="viewcode-block" id="BufferedCartesianPolygon.buffer_polyline">
+<a class="viewcode-back" href="../../../api.html#promis.geo.BufferedCartesianPolygon.buffer_polyline">[docs]</a>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">buffer_polyline</span><span class="p">(</span><span class="n">polyline</span><span class="p">:</span> <span class="n">CartesianPolyLine</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;BufferedPolarPolygon&quot;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Turn a PolarPolyLine into a BufferedPolarPolygon based on usual street widths. </span>
+<span class="sd">        Keep tags and reference to original PolyLine, which is used for sampling.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            polyline (PolarPolyLine): The PolyLine you want to buffer</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            BufferedPolarPolygon: The buffered PolarPolygon.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="n">calculate_street_width</span><span class="p">(</span><span class="n">polyline</span><span class="p">)</span>
+        <span class="n">location_type</span> <span class="o">=</span> <span class="n">polyline</span><span class="o">.</span><span class="n">location_type</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="n">polyline</span><span class="o">.</span><span class="n">tags</span> <span class="o">|</span> <span class="p">{</span><span class="s2">&quot;line&quot;</span><span class="p">:</span> <span class="n">polyline</span><span class="o">.</span><span class="n">to_polar</span><span class="p">(</span><span class="n">polyline</span><span class="o">.</span><span class="n">origin</span><span class="p">)}</span>
+        
+        <span class="n">line</span> <span class="o">=</span> <span class="n">LineString</span><span class="p">([</span><span class="n">loc</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="k">for</span> <span class="n">loc</span> <span class="ow">in</span> <span class="n">polyline</span><span class="o">.</span><span class="n">locations</span><span class="p">])</span>
+        <span class="n">buffer</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="n">width</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">exterior</span> <span class="o">=</span> <span class="n">buffer</span><span class="o">.</span><span class="n">geoms</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">exterior</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">buffer</span><span class="p">,</span> <span class="n">MultiPolygon</span><span class="p">)</span> <span class="k">else</span> <span class="n">buffer</span><span class="o">.</span><span class="n">exterior</span>
+        <span class="k">return</span> <span class="n">BufferedCartesianPolygon</span><span class="p">(</span>
+                <span class="n">polyline</span><span class="o">=</span><span class="n">polyline</span><span class="p">,</span>
+                <span class="n">locations</span><span class="o">=</span><span class="p">[</span>
+                    <span class="n">CartesianLocation</span><span class="p">(</span><span class="o">*</span><span class="n">point</span><span class="p">,</span> <span class="n">location_type</span><span class="o">=</span><span class="n">location_type</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">exterior</span><span class="o">.</span><span class="n">coords</span>
+                <span class="p">],</span>
+                <span class="n">location_type</span><span class="o">=</span><span class="n">location_type</span><span class="p">,</span>
+                <span class="n">origin</span><span class="o">=</span><span class="n">polyline</span><span class="o">.</span><span class="n">origin</span><span class="p">,</span>
+                <span class="n">tags</span><span class="o">=</span><span class="n">tags</span><span class="p">,</span>
+            <span class="p">)</span></div>
+</div>
+
 
 </pre></div>
 

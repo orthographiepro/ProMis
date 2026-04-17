@@ -88,7 +88,6 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">defaultdict</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Iterable</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">deepcopy</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pickle</span><span class="w"> </span><span class="kn">import</span> <span class="n">dump</span><span class="p">,</span> <span class="n">load</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">re</span><span class="w"> </span><span class="kn">import</span> <span class="n">finditer</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">traceback</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_exception</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">warnings</span><span class="w"> </span><span class="kn">import</span> <span class="n">warn</span>
@@ -96,10 +95,11 @@
 <span class="c1"># Third Party</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">array</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">NDArray</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pickle</span><span class="w"> </span><span class="kn">import</span> <span class="n">dump</span><span class="p">,</span> <span class="n">load</span>
 
 <span class="c1"># ProMis</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">promis.geo</span><span class="w"> </span><span class="kn">import</span> <span class="n">CartesianCollection</span><span class="p">,</span> <span class="n">CartesianMap</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">promis.logic.spatial</span><span class="w"> </span><span class="kn">import</span> <span class="n">Depth</span><span class="p">,</span> <span class="n">Distance</span><span class="p">,</span> <span class="n">Over</span><span class="p">,</span> <span class="n">Relation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">promis.geo</span><span class="w"> </span><span class="kn">import</span> <span class="n">CartesianCollection</span><span class="p">,</span> <span class="n">CartesianDeltaCollection</span><span class="p">,</span> <span class="n">CartesianMap</span><span class="p">,</span> <span class="n">Collection</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">promis.logic.spatial</span><span class="w"> </span><span class="kn">import</span> <span class="n">Angle</span><span class="p">,</span> <span class="n">Depth</span><span class="p">,</span> <span class="n">Distance</span><span class="p">,</span> <span class="n">Over</span><span class="p">,</span> <span class="n">Relation</span><span class="p">,</span> <span class="n">MaxVelocity</span><span class="p">,</span> <span class="n">Crosses</span><span class="p">,</span> <span class="n">DiscreteRelation</span><span class="p">,</span> <span class="n">OnRightSide</span><span class="p">,</span> <span class="n">Follows</span><span class="p">,</span> <span class="n">DeltaRelation</span>
 
 
 <div class="viewcode-block" id="StaRMap">
@@ -120,7 +120,14 @@
         <span class="n">uam</span><span class="p">:</span> <span class="n">CartesianMap</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">uam</span> <span class="o">=</span> <span class="n">uam</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">relations</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Relation</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;over&quot;</span><span class="p">:</span> <span class="p">{},</span> <span class="s2">&quot;distance&quot;</span><span class="p">:</span> <span class="p">{},</span> <span class="s2">&quot;depth&quot;</span><span class="p">:</span> <span class="p">{}}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">relations</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Relation</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;over&quot;</span><span class="p">:</span> <span class="p">{},</span> 
+            <span class="s2">&quot;distance&quot;</span><span class="p">:</span> <span class="p">{},</span> 
+            <span class="s2">&quot;depth&quot;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="s2">&quot;maxspeed&quot;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="s2">&quot;on_right_side&quot;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="s2">&quot;angle&quot;</span><span class="p">:</span> <span class="p">{},</span>
+        <span class="p">}</span>
 
 <div class="viewcode-block" id="StaRMap.initialize">
 <a class="viewcode-back" href="../../api.html#promis.star_map.StaRMap.initialize">[docs]</a>
@@ -138,10 +145,10 @@
         <span class="p">)</span></div>
 
 
+    <span class="c1"># @staticmethod</span>
 <div class="viewcode-block" id="StaRMap.relation_name_to_class">
 <a class="viewcode-back" href="../../api.html#promis.star_map.StaRMap.relation_name_to_class">[docs]</a>
-    <span class="nd">@staticmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">relation_name_to_class</span><span class="p">(</span><span class="n">relation</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Relation</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">relation_name_to_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">relation</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Relation</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the class for a given relation name.</span>
 
 <span class="sd">        Args:</span>
@@ -161,6 +168,12 @@
                 <span class="k">return</span> <span class="n">Distance</span>
             <span class="k">case</span> <span class="s2">&quot;depth&quot;</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">Depth</span>
+            <span class="k">case</span> <span class="s2">&quot;maxspeed&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">MaxVelocity</span>
+            <span class="k">case</span> <span class="s2">&quot;on_right_side&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">OnRightSide</span>
+            <span class="k">case</span> <span class="s2">&quot;angle&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">Angle</span>
             <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Requested unknown relation &quot;</span><span class="si">{</span><span class="n">relation</span><span class="si">}</span><span class="s1">&quot; from StaR Map&#39;</span><span class="p">)</span></div>
 
@@ -290,18 +303,20 @@
             <span class="n">full_pattern</span> <span class="o">=</span> <span class="sa">rf</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">)\(X</span><span class="si">{</span><span class="n">relates_to</span><span class="si">}</span><span class="s2">\)&quot;</span>
 
             <span class="k">for</span> <span class="n">match</span> <span class="ow">in</span> <span class="n">finditer</span><span class="p">(</span><span class="n">full_pattern</span><span class="p">,</span> <span class="n">logic</span><span class="p">):</span>
-                <span class="k">match</span> <span class="n">arity</span><span class="p">:</span>
-                    <span class="k">case</span> <span class="mi">1</span><span class="p">:</span>
-                        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
-                            <span class="s2">&quot;Arity 1 is not supported because it always needs a location type&quot;</span>
-                        <span class="p">)</span>
-                    <span class="k">case</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">arity</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+                        <span class="s2">&quot;Arity 1 is not supported because it always needs a location type&quot;</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="n">arity</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]:</span>
                         <span class="n">location_type</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
                         <span class="k">if</span> <span class="n">location_type</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">in</span> <span class="s2">&quot;&#39;</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">:</span>  <span class="c1"># Remove quotes</span>
                             <span class="n">location_type</span> <span class="o">=</span> <span class="n">location_type</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">location_type</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isupper</span><span class="p">():</span>
+                            <span class="c1"># location_type is a problog variable. unlikely to find an uam correspondence</span>
+                            <span class="k">continue</span>
                         <span class="n">relations</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">location_type</span><span class="p">)</span>
-                    <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
-                        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Only arity 2 is supported, but got </span><span class="si">{</span><span class="n">arity</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Only arity 2 is supported, but got </span><span class="si">{</span><span class="n">arity</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">relations</span>
 
@@ -410,12 +425,16 @@
             <span class="k">return</span> <span class="n">array</span><span class="p">([</span><span class="n">relation_class</span><span class="o">.</span><span class="n">empty_map_parameters</span><span class="p">()]</span> <span class="o">*</span> <span class="n">coordinates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">collection</span> <span class="o">=</span> <span class="n">CartesianCollection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">uam</span><span class="o">.</span><span class="n">origin</span><span class="p">)</span>
+            <span class="n">collection</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_make_collection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">uam</span><span class="o">.</span><span class="n">origin</span><span class="p">)</span>
             <span class="n">collection</span><span class="o">.</span><span class="n">append_with_default</span><span class="p">(</span><span class="n">coordinates</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
 
-            <span class="k">return</span> <span class="n">relation_class</span><span class="o">.</span><span class="n">from_r_trees</span><span class="p">(</span>
+            <span class="n">initialized_relation</span> <span class="o">=</span> <span class="n">relation_class</span><span class="o">.</span><span class="n">from_r_trees</span><span class="p">(</span>
                 <span class="n">collection</span><span class="p">,</span> <span class="n">r_trees</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">original_geometries</span><span class="o">=</span><span class="n">random_maps</span>
-            <span class="p">)</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">relation_class</span><span class="p">,</span> <span class="n">DiscreteRelation</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">relations</span><span class="p">[</span><span class="n">relation</span><span class="p">][</span><span class="n">location_type</span><span class="p">]</span><span class="o">.</span><span class="n">set_cases</span><span class="p">(</span><span class="n">initialized_relation</span><span class="o">.</span><span class="n">cases</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">initialized_relation</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">warn</span><span class="p">(</span>
@@ -450,7 +469,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="n">what</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">relation_and_location_types</span> <span class="k">if</span> <span class="n">what</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">what</span>
-        <span class="n">all_location_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">location_type</span> <span class="k">for</span> <span class="n">types</span> <span class="ow">in</span> <span class="n">what</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">for</span> <span class="n">location_type</span> <span class="ow">in</span> <span class="n">types</span><span class="p">]</span>
+        <span class="n">all_location_types</span> <span class="o">=</span> <span class="p">{</span><span class="n">location_type</span> <span class="k">for</span> <span class="n">types</span> <span class="ow">in</span> <span class="n">what</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">for</span> <span class="n">location_type</span> <span class="ow">in</span> <span class="n">types</span><span class="p">}</span>
         <span class="n">coordinates</span> <span class="o">=</span> <span class="n">evaluation_points</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()</span>
 
         <span class="k">for</span> <span class="n">location_type</span> <span class="ow">in</span> <span class="n">all_location_types</span><span class="p">:</span>
@@ -463,17 +482,135 @@
 
                 <span class="k">if</span> <span class="n">location_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">relations</span><span class="p">[</span><span class="n">relation</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">relations</span><span class="p">[</span><span class="n">relation</span><span class="p">][</span><span class="n">location_type</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">relation_name_to_class</span><span class="p">(</span><span class="n">relation</span><span class="p">)(</span>
-                        <span class="n">CartesianCollection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">uam</span><span class="o">.</span><span class="n">origin</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_make_collection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">uam</span><span class="o">.</span><span class="n">origin</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
                         <span class="n">location_type</span>
                     <span class="p">)</span>
-
-                <span class="c1"># Update collection of sample points</span>
+                <span class="c1">#TODO hier die values entsprechend der Rückgabe von compute anpassen</span>
+                <span class="n">vals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_parameters</span><span class="p">(</span><span class="n">coordinates</span><span class="p">,</span> <span class="n">relation</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">r_trees</span><span class="p">,</span> <span class="n">random_maps</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">relations</span><span class="p">[</span><span class="n">relation</span><span class="p">][</span><span class="n">location_type</span><span class="p">]</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                     <span class="n">coordinates</span><span class="p">,</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">_compute_parameters</span><span class="p">(</span><span class="n">coordinates</span><span class="p">,</span> <span class="n">relation</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">r_trees</span><span class="p">,</span> <span class="n">random_maps</span><span class="p">)</span>
+                    <span class="n">vals</span><span class="p">,</span> 
                 <span class="p">)</span></div>
-</div>
 
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_make_collection</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">number_of_values</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Collection</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">CartesianCollection</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">number_of_values</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DeltaStaRMap">
+<a class="viewcode-back" href="../../api.html#promis.star_map.DeltaStaRMap">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DeltaStaRMap</span><span class="p">(</span><span class="n">StaRMap</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">uam</span><span class="p">,</span> <span class="n">dt</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">uam</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">relations</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s2">&quot;crosses&quot;</span><span class="p">:</span> <span class="p">{},</span>
+            <span class="s2">&quot;follows&quot;</span><span class="p">:</span> <span class="p">{},</span>
+        <span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dt</span> <span class="o">=</span> <span class="n">dt</span>
+
+    <span class="c1"># @staticmethod</span>
+<div class="viewcode-block" id="DeltaStaRMap.relation_name_to_class">
+<a class="viewcode-back" href="../../api.html#promis.star_map.DeltaStaRMap.relation_name_to_class">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">relation_name_to_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">relation</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Relation</span><span class="p">:</span>
+        <span class="k">match</span> <span class="n">relation</span><span class="p">:</span>
+            <span class="k">case</span> <span class="s2">&quot;crosses&quot;</span><span class="p">:</span>
+                <span class="c1"># causes pickling problems... also with dill</span>
+                <span class="c1"># class DCrosses(Crosses): </span>
+                <span class="c1">#     dt = self.dt</span>
+                <span class="c1"># return DCrosses</span>
+                <span class="k">return</span> <span class="n">CROSSES_LOOKUP</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">]</span>
+            <span class="k">case</span> <span class="s2">&quot;follows&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">FOLLOWS_LOOKUP</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">dt</span><span class="p">]</span>
+            <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">StaRMap</span><span class="o">.</span><span class="n">relation_name_to_class</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">relation</span><span class="p">)</span></div>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_make_collection</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">number_of_values</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Collection</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">CartesianDeltaCollection</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">number_of_values</span><span class="p">)</span></div>
+
+
+<span class="c1"># class definitions as hotfix for pickling issue</span>
+<div class="viewcode-block" id="Follows05">
+<a class="viewcode-back" href="../../api.html#promis.star_map.Follows05">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Follows05</span><span class="p">(</span><span class="n">Follows</span><span class="p">):</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="mf">0.5</span></div>
+
+<div class="viewcode-block" id="Follows10">
+<a class="viewcode-back" href="../../api.html#promis.star_map.Follows10">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Follows10</span><span class="p">(</span><span class="n">Follows</span><span class="p">):</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="mi">1</span></div>
+
+<div class="viewcode-block" id="Follows15">
+<a class="viewcode-back" href="../../api.html#promis.star_map.Follows15">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Follows15</span><span class="p">(</span><span class="n">Follows</span><span class="p">):</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="mf">1.5</span></div>
+
+<div class="viewcode-block" id="Follows20">
+<a class="viewcode-back" href="../../api.html#promis.star_map.Follows20">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Follows20</span><span class="p">(</span><span class="n">Follows</span><span class="p">):</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="mf">2.0</span></div>
+
+<div class="viewcode-block" id="Follows30">
+<a class="viewcode-back" href="../../api.html#promis.star_map.Follows30">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Follows30</span><span class="p">(</span><span class="n">Follows</span><span class="p">):</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="mf">3.0</span></div>
+
+<div class="viewcode-block" id="Follows40">
+<a class="viewcode-back" href="../../api.html#promis.star_map.Follows40">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Follows40</span><span class="p">(</span><span class="n">Follows</span><span class="p">):</span>
+    <span class="n">dt</span> <span class="o">=</span> <span class="mf">4.0</span></div>
+
+
+<div class="viewcode-block" id="Crosses05">
+<a class="viewcode-back" href="../../api.html#promis.star_map.Crosses05">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Crosses05</span><span class="p">(</span><span class="n">Crosses</span><span class="p">):</span> 
+    <span class="n">dt</span> <span class="o">=</span> <span class="mf">0.5</span></div>
+
+<div class="viewcode-block" id="Crosses10">
+<a class="viewcode-back" href="../../api.html#promis.star_map.Crosses10">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Crosses10</span><span class="p">(</span><span class="n">Crosses</span><span class="p">):</span> 
+    <span class="n">dt</span> <span class="o">=</span> <span class="mf">1.0</span></div>
+
+<div class="viewcode-block" id="Crosses15">
+<a class="viewcode-back" href="../../api.html#promis.star_map.Crosses15">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Crosses15</span><span class="p">(</span><span class="n">Crosses</span><span class="p">):</span> 
+    <span class="n">dt</span> <span class="o">=</span> <span class="mf">1.5</span></div>
+
+<div class="viewcode-block" id="Crosses20">
+<a class="viewcode-back" href="../../api.html#promis.star_map.Crosses20">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Crosses20</span><span class="p">(</span><span class="n">Crosses</span><span class="p">):</span> 
+    <span class="n">dt</span> <span class="o">=</span> <span class="mf">2.0</span></div>
+
+<div class="viewcode-block" id="Crosses30">
+<a class="viewcode-back" href="../../api.html#promis.star_map.Crosses30">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Crosses30</span><span class="p">(</span><span class="n">Crosses</span><span class="p">):</span> 
+    <span class="n">dt</span> <span class="o">=</span> <span class="mf">3.0</span></div>
+
+<div class="viewcode-block" id="Crosses40">
+<a class="viewcode-back" href="../../api.html#promis.star_map.Crosses40">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">Crosses40</span><span class="p">(</span><span class="n">Crosses</span><span class="p">):</span> 
+    <span class="n">dt</span> <span class="o">=</span> <span class="mf">4.0</span></div>
+
+
+<span class="n">CROSSES_LOOKUP</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="mf">0.5</span><span class="p">:</span> <span class="n">Crosses05</span><span class="p">,</span>
+    <span class="mf">1.0</span><span class="p">:</span> <span class="n">Crosses10</span><span class="p">,</span>
+    <span class="mf">1.5</span><span class="p">:</span> <span class="n">Crosses15</span><span class="p">,</span>
+    <span class="mf">2.0</span><span class="p">:</span> <span class="n">Crosses20</span><span class="p">,</span>
+    <span class="mf">3.0</span><span class="p">:</span> <span class="n">Crosses30</span><span class="p">,</span>
+    <span class="mf">4.0</span><span class="p">:</span> <span class="n">Crosses40</span>
+<span class="p">}</span>
+
+<span class="n">FOLLOWS_LOOKUP</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="mf">0.5</span><span class="p">:</span> <span class="n">Follows05</span><span class="p">,</span>
+    <span class="mf">1.0</span><span class="p">:</span> <span class="n">Follows10</span><span class="p">,</span>
+    <span class="mf">1.5</span><span class="p">:</span> <span class="n">Follows15</span><span class="p">,</span>
+    <span class="mf">2.0</span><span class="p">:</span> <span class="n">Follows20</span><span class="p">,</span>
+    <span class="mf">3.0</span><span class="p">:</span> <span class="n">Follows30</span><span class="p">,</span>
+    <span class="mf">4.0</span><span class="p">:</span> <span class="n">Follows40</span><span class="p">,</span>
+<span class="p">}</span>
 </pre></div>
 
            </div>

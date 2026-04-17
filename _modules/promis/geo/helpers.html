@@ -843,6 +843,66 @@
         <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">atan2</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">%</span> <span class="n">tau</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_street_width</span><span class="p">(</span><span class="n">route</span> <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculates the street width for a given route based on common construction guidelines and numbers of lanes.</span>
+<span class="sd">        Note that this is an approximation and real widths might differ.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        route (Route): the route for which the total width needs to be calculated</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: if route has an unclear location_type</span>
+
+<span class="sd">    References:</span>
+<span class="sd">        &lt;https://de.wikipedia.org/wiki/Richtlinien_f%C3%BCr_die_Anlage_von_Stra%C3%9Fen_%E2%80%93_Querschnitt&gt;</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        float: street width</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">base_width</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="k">match</span> <span class="n">route</span><span class="o">.</span><span class="n">location_type</span><span class="p">:</span>
+        <span class="k">case</span> <span class="s2">&quot;motorway&quot;</span><span class="p">:</span>
+            <span class="c1"># Autobahn</span>
+            <span class="n">base_width</span> <span class="o">=</span> <span class="mf">3.5</span>
+            <span class="c1"># Mittelstreifen 2.5 - 4 m</span>
+        <span class="k">case</span> <span class="s2">&quot;trunk&quot;</span><span class="p">:</span>
+            <span class="c1"># Kraftfahrstraße</span>
+            <span class="n">base_width</span> <span class="o">=</span> <span class="mf">3.5</span>
+        <span class="k">case</span> <span class="s2">&quot;primary&quot;</span><span class="p">:</span>
+            <span class="c1"># Bundesstraße</span>
+            <span class="n">base_width</span> <span class="o">=</span> <span class="mf">3.5</span>
+        <span class="k">case</span> <span class="s2">&quot;secondary&quot;</span><span class="p">:</span>
+            <span class="c1"># Landesstraße</span>
+            <span class="n">base_width</span> <span class="o">=</span> <span class="mi">3</span>
+        <span class="k">case</span> <span class="s2">&quot;tertiary&quot;</span><span class="p">:</span>
+            <span class="n">base_width</span> <span class="o">=</span> <span class="mf">3.25</span>
+        <span class="k">case</span> <span class="s2">&quot;residential&quot;</span><span class="p">:</span>
+            <span class="n">base_width</span> <span class="o">=</span> <span class="mf">2.75</span>
+        <span class="k">case</span> <span class="s2">&quot;living_street&quot;</span><span class="p">:</span>
+            <span class="n">base_width</span> <span class="o">=</span> <span class="mf">2.75</span>
+        <span class="k">case</span> <span class="s2">&quot;unclassified&quot;</span><span class="p">:</span>
+            <span class="n">base_width</span> <span class="o">=</span> <span class="mf">2.75</span>
+        <span class="k">case</span> <span class="s2">&quot;service&quot;</span><span class="p">:</span>
+            <span class="n">base_width</span> <span class="o">=</span> <span class="mf">2.5</span>
+        <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">1</span>
+        
+    <span class="n">factor</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">route</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s2">&quot;lanes&quot;</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">route</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s2">&quot;lanes&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;1&quot;</span> <span class="ow">and</span> <span class="n">route</span><span class="o">.</span><span class="n">tags</span><span class="p">[</span><span class="s2">&quot;oneway&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;no&quot;</span><span class="p">:</span> 
+        <span class="n">factor</span> <span class="o">*=</span> <span class="mf">1.5</span>
+    
+    <span class="n">offset</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="n">route</span><span class="o">.</span><span class="n">location_type</span> <span class="o">==</span> <span class="s2">&quot;motorway&quot;</span><span class="p">:</span> 
+        <span class="n">offset</span> <span class="o">+=</span> <span class="mi">4</span>
+
+    <span class="n">base_width</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">offset</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;Süsterfeldstraße&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mf">2.5</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+        <span class="s2">&quot;Kühlwetterstraße&quot;</span><span class="p">:</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+    <span class="p">}</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">route</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="p">(</span><span class="n">base_width</span><span class="p">,</span> <span class="n">factor</span><span class="p">,</span> <span class="n">offset</span><span class="p">))</span>
+        
+    <span class="c1"># add space for Mittelstreifen and broader truck lanes for motorways</span>
+    <span class="k">return</span> <span class="n">base_width</span> <span class="o">*</span> <span class="n">factor</span> <span class="o">+</span> <span class="n">offset</span>
 </pre></div>
 
            </div>

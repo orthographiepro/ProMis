@@ -113,6 +113,7 @@
         <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">identifier</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">covariance</span><span class="p">:</span> <span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="p">{},</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># Assertions on the given locations</span>
         <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">locations</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">,</span> <span class="s2">&quot;A PolyLine must contain at least two points!&quot;</span>
@@ -125,6 +126,12 @@
 
         <span class="c1"># Setup Geospatial</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">location_type</span><span class="o">=</span><span class="n">location_type</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">identifier</span><span class="o">=</span><span class="n">identifier</span><span class="p">)</span>
+        
+        <span class="c1"># Setup tags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tags</span> <span class="o">=</span> <span class="n">tags</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;lanes&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;maxspeed&quot;</span><span class="p">,</span> <span class="s2">&quot;-1&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;oneway&quot;</span><span class="p">,</span> <span class="s2">&quot;no&quot;</span><span class="p">)</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">covariance</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ndarray</span><span class="p">:</span>
@@ -157,7 +164,7 @@
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[</span>
                 <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">location_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">covariance</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">locations</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">location_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">covariance</span><span class="p">,</span> <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span>
                 <span class="p">)</span>
             <span class="p">]</span> <span class="o">*</span> <span class="n">number_of_samples</span>
 
@@ -174,6 +181,7 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">covariance</span><span class="p">,</span>
+                    <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span>
                 <span class="p">)</span>
             <span class="p">)</span>
 
@@ -227,9 +235,10 @@
         <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">identifier</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">covariance</span><span class="p">:</span> <span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="p">{},</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># Setup PolyLine</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">locations</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">covariance</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">locations</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">covariance</span><span class="p">,</span> <span class="n">tags</span><span class="p">)</span>
 
 <div class="viewcode-block" id="PolarPolyLine.to_cartesian">
 <a class="viewcode-back" href="../../../api.html#promis.geo.PolarPolyLine.to_cartesian">[docs]</a>
@@ -255,6 +264,7 @@
             <span class="n">location_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">location_type</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
             <span class="n">identifier</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span>
+            <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span>
             <span class="n">covariance</span><span class="o">=</span><span class="n">radians_to_meters</span><span class="p">(</span>
                 <span class="n">array</span><span class="p">(</span>
                     <span class="p">[</span><span class="n">radians</span><span class="p">(</span><span class="n">degree</span><span class="p">)</span> <span class="k">for</span> <span class="n">degree</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="o">.</span><span class="n">covariance</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">)]</span>
@@ -330,13 +340,31 @@
         <span class="n">identifier</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">covariance</span><span class="p">:</span> <span class="n">ndarray</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">origin</span><span class="p">:</span> <span class="n">PolarLocation</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">tags</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="p">{},</span>
     <span class="p">):</span>
         <span class="c1"># Setup attributes</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">origin</span> <span class="o">=</span> <span class="n">origin</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">geometry</span> <span class="o">=</span> <span class="n">LineString</span><span class="p">([</span><span class="n">location</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">location</span> <span class="ow">in</span> <span class="n">locations</span><span class="p">])</span>
 
         <span class="c1"># Setup PolyLine</span>
-        <span class="n">PolyLine</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">locations</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">covariance</span><span class="p">)</span>
+        <span class="n">PolyLine</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">locations</span><span class="p">,</span> <span class="n">location_type</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">identifier</span><span class="p">,</span> <span class="n">covariance</span><span class="p">,</span> <span class="n">tags</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CartesianPolyLine.sample">
+<a class="viewcode-back" href="../../../api.html#promis.geo.CartesianPolyLine.sample">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">number_of_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">DerivedPolyLine</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Sample PolyLines given this PolyLine&#39;s uncertainty.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            number_of_samples: How many samples to draw</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The set of sampled PolyLines, each with same name, identifier etc.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">samples</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">CartesianPolyLine</span><span class="p">]</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">number_of_samples</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">sample</span> <span class="ow">in</span> <span class="n">samples</span><span class="p">:</span>
+            <span class="n">sample</span><span class="o">.</span><span class="n">origin</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">origin</span>
+        <span class="k">return</span> <span class="n">samples</span></div>
+
 
 <div class="viewcode-block" id="CartesianPolyLine.to_polar">
 <a class="viewcode-back" href="../../../api.html#promis.geo.CartesianPolyLine.to_polar">[docs]</a>
@@ -374,6 +402,7 @@
             <span class="n">location_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">location_type</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
             <span class="n">identifier</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span>
+            <span class="n">tags</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span>
             <span class="n">covariance</span><span class="o">=</span><span class="n">array</span><span class="p">(</span>
                 <span class="p">[</span><span class="n">degrees</span><span class="p">(</span><span class="n">rad</span><span class="p">)</span> <span class="k">for</span> <span class="n">rad</span> <span class="ow">in</span> <span class="n">meters_to_radians</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">distribution</span><span class="o">.</span><span class="n">covariance</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">)]</span>
             <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>

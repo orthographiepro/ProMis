@@ -94,8 +94,8 @@
 <span class="c1"># ProMis</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">promis.geo</span><span class="w"> </span><span class="kn">import</span> <span class="n">CartesianCollection</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">promis.logic</span><span class="w"> </span><span class="kn">import</span> <span class="n">Solver</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">promis.logic.spatial</span><span class="w"> </span><span class="kn">import</span> <span class="n">DiscreteRelation</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">promis.star_map</span><span class="w"> </span><span class="kn">import</span> <span class="n">StaRMap</span>
-
 
 <div class="viewcode-block" id="ProMis">
 <a class="viewcode-back" href="../../api.html#promis.promis.ProMis">[docs]</a>
@@ -143,12 +143,14 @@
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># Get all relevant relations from the StaRMap</span>
-        <span class="n">relations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">star_map</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="n">logic</span><span class="p">)</span>
+        <span class="n">relations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">star_map</span><span class="o">.</span><span class="n">get_all</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">relation_type</span> <span class="ow">in</span> <span class="n">relations</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
             <span class="k">for</span> <span class="n">location_type</span> <span class="ow">in</span> <span class="n">relations</span><span class="p">[</span><span class="n">relation_type</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
                 <span class="n">relation</span> <span class="o">=</span> <span class="n">relations</span><span class="p">[</span><span class="n">relation_type</span><span class="p">][</span><span class="n">location_type</span><span class="p">]</span>
                 <span class="n">relation</span><span class="o">.</span><span class="n">parameters</span> <span class="o">=</span> <span class="n">relation</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">into</span><span class="p">(</span>
-                    <span class="n">evaluation_points</span><span class="p">,</span> <span class="n">interpolation_method</span><span class="p">,</span> <span class="n">in_place</span><span class="o">=</span><span class="kc">False</span>
+                    <span class="n">evaluation_points</span><span class="p">,</span> 
+                    <span class="n">interpolation_method</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">relation</span><span class="p">,</span> <span class="n">DiscreteRelation</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;nearest&quot;</span><span class="p">,</span>
+                    <span class="n">in_place</span><span class="o">=</span><span class="kc">False</span>
                 <span class="p">)</span>
 
         <span class="c1"># For each point in the target CartesianCollection, we need to run a query</span>
@@ -172,6 +174,7 @@
                         <span class="n">relation</span> <span class="o">=</span> <span class="n">relations</span><span class="p">[</span><span class="n">relation_type</span><span class="p">][</span><span class="n">location_type</span><span class="p">]</span>
                         <span class="n">program</span> <span class="o">+=</span> <span class="n">relation</span><span class="o">.</span><span class="n">index_to_distributional_clause</span><span class="p">(</span><span class="n">batch_index</span><span class="p">)</span>
 
+                <span class="n">program</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_generate_state_info</span><span class="p">(</span><span class="n">batch_index</span><span class="p">,</span> <span class="n">evaluation_points</span><span class="p">)</span>
                 <span class="n">program</span> <span class="o">+=</span> <span class="n">queries</span><span class="p">[</span><span class="n">batch_index</span><span class="p">]</span>
 
             <span class="c1"># Add program to collection</span>
@@ -266,7 +269,25 @@
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">_run_inference</span><span class="p">(</span><span class="n">solver</span><span class="p">:</span> <span class="n">Solver</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
-        <span class="k">return</span> <span class="n">solver</span><span class="o">.</span><span class="n">inference</span><span class="p">()</span></div>
+        <span class="k">return</span> <span class="n">solver</span><span class="o">.</span><span class="n">inference</span><span class="p">()</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_generate_state_info</span><span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">evaluation_points</span><span class="p">:</span> <span class="n">CartesianCollection</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Produces the Problog-facts describing the given state.</span>
+<span class="sd">        For a column named &quot;speed&quot; with the value 30, the created fact would be &quot;state_speed(30)&quot;</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            index (int): which entry of evaluation points to use</span>
+<span class="sd">            evaluation_points (CartesianCollection): the data on all states</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: The Problog facts as a string</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">evaluation_points</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span>
+            <span class="sa">f</span><span class="s2">&quot;state_</span><span class="si">{</span><span class="n">evaluation_points</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">(x_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">state</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s2">).&quot;</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">state</span><span class="p">)</span> <span class="o">-</span> <span class="n">evaluation_points</span><span class="o">.</span><span class="n">number_of_values</span><span class="p">)</span>
+        <span class="p">])</span><span class="o">+</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span></div>
 
 </pre></div>
 

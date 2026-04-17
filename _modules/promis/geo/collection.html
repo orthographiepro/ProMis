@@ -238,6 +238,19 @@
         <span class="n">location_columns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">location_columns</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span></div>
 
+    
+<div class="viewcode-block" id="Collection.unique_coordinates">
+<a class="viewcode-back" href="../../../api.html#promis.geo.Collection.unique_coordinates">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">unique_coordinates</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unpack the unique location coordinates as numpy array.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The indices of this Collection as numpy array</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">location_columns</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">array</span><span class="p">([</span><span class="n">name</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">location_columns</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="kc">False</span><span class="p">)])</span></div>
+
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">position</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the value(s) at a specific coordinate.</span>
@@ -601,7 +614,7 @@
 <span class="sd">            A list of `CartesianLocation` objects.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="n">coordinates</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()</span>
+        <span class="n">coordinates</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">unique_coordinates</span><span class="p">()</span>
 
         <span class="n">locations</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">coordinates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
@@ -668,13 +681,14 @@
             <span class="n">target</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
 
         <span class="c1"># Expand or reduce target to take up the same number of value columns</span>
-        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
-            <span class="n">target</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;v</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">2</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
-        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">):</span>
-            <span class="k">del</span> <span class="n">target</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;v</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">target</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">3</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
+        <span class="n">number_of_coordinates</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s2">&quot;v0&quot;</span><span class="p">)</span>
+        
+        <span class="n">target</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+
+        <span class="n">target</span><span class="o">.</span><span class="n">number_of_values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_values</span>
 
         <span class="n">interpolated</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_interpolator</span><span class="p">(</span><span class="n">interpolation_method</span><span class="p">)(</span><span class="n">target</span><span class="o">.</span><span class="n">coordinates</span><span class="p">())</span>
-        <span class="n">target</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">:]</span> <span class="o">=</span> <span class="n">atleast_2d</span><span class="p">(</span><span class="n">interpolated</span><span class="p">)</span>
+        <span class="n">target</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:,</span> <span class="n">number_of_coordinates</span><span class="p">:]</span> <span class="o">=</span> <span class="n">atleast_2d</span><span class="p">(</span><span class="n">interpolated</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">target</span></div>
 

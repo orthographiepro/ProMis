@@ -1,0 +1,445 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>promis.geo.delta_collection &mdash; ProMis 3.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=acc74ff5"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            ProMis
+              <img src="../../../_static/logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../notebooks/usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gui.html">Graphical User Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api.html">API</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">ProMis</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">promis.geo.delta_collection</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for promis.geo.delta_collection</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;This module contains a class for handling a collection of spatially referenced data.&quot;&quot;&quot;</span>
+
+<span class="c1">#</span>
+<span class="c1"># Copyright (c) Simon Kohaut, Honda Research Institute Europe GmbH, Felix Divo, and contributors</span>
+<span class="c1">#</span>
+<span class="c1"># This file is part of ProMis and licensed under the BSD 3-Clause License.</span>
+<span class="c1"># You should have received a copy of the BSD 3-Clause License along with ProMis.</span>
+<span class="c1"># If not, see https://opensource.org/license/bsd-3-clause/.</span>
+<span class="c1">#</span>
+
+<span class="c1"># Standard Library</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+
+<span class="c1"># Third Party</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="kn">import</span> <span class="n">hstack</span><span class="p">,</span> <span class="n">zeros</span><span class="p">,</span> <span class="n">repeat</span><span class="p">,</span> <span class="n">column_stack</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">numpy.typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">NDArray</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="kn">import</span> <span class="n">DataFrame</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.interpolate</span><span class="w"> </span><span class="kn">import</span> <span class="n">RegularGridInterpolator</span>
+
+<span class="c1"># ProMis</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">promis.geo.location</span><span class="w"> </span><span class="kn">import</span> <span class="n">CartesianLocation</span><span class="p">,</span> <span class="n">PolarLocation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">promis.geo.collection</span><span class="w"> </span><span class="kn">import</span> <span class="n">Collection</span><span class="p">,</span> <span class="n">CartesianCollection</span><span class="p">,</span> <span class="n">PolarCollection</span>
+
+
+<div class="viewcode-block" id="DeltaCollection">
+<a class="viewcode-back" href="../../../api.html#promis.geo.DeltaCollection">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">DeltaCollection</span><span class="p">(</span><span class="n">Collection</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A collection of values over a polar or Cartesian space.</span>
+
+<span class="sd">    Locations are stored as Cartesian coordinates, but data can be unpacked into both</span>
+<span class="sd">    polar and Cartesian frames.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        origin: The polar coordinates of this collection&#39;s Cartesian frame&#39;s center</span>
+<span class="sd">        data: A list of Cartesian location and value pairs</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">columns</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">origin</span><span class="p">:</span> <span class="n">PolarLocation</span><span class="p">,</span> <span class="n">number_of_values</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Attributes setup</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">number_of_values</span> <span class="o">=</span> <span class="n">number_of_values</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">origin</span> <span class="o">=</span> <span class="n">origin</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">basemap</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Initialize the data frame</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">DataFrame</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="n">columns</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DeltaCollection.values">
+<a class="viewcode-back" href="../../../api.html#promis.geo.DeltaCollection.values">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">values</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unpack the location values as numpy array.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The values of this Collection as numpy array</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">value_columns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">4</span><span class="p">:]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">value_columns</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span></div>
+
+    
+<div class="viewcode-block" id="DeltaCollection.values_for">
+<a class="viewcode-back" href="../../../api.html#promis.geo.DeltaCollection.values_for">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">values_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bearing</span><span class="p">,</span> <span class="n">speed</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unpack the location values for a certain bearing and speed as numpy array.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The values of this Collection as numpy array</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">value_columns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">4</span><span class="p">:]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;bearing&#39;</span><span class="p">]</span><span class="o">==</span><span class="n">bearing</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;speed&#39;</span><span class="p">]</span><span class="o">==</span><span class="n">speed</span><span class="p">)][</span><span class="n">value_columns</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span></div>
+
+    
+<div class="viewcode-block" id="DeltaCollection.coordinates_for">
+<a class="viewcode-back" href="../../../api.html#promis.geo.DeltaCollection.coordinates_for">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">coordinates_for</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bearing</span><span class="p">,</span> <span class="n">speed</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+        <span class="n">location_columns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;bearing&#39;</span><span class="p">]</span><span class="o">==</span><span class="n">bearing</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;speed&#39;</span><span class="p">]</span><span class="o">==</span><span class="n">speed</span><span class="p">)][</span><span class="n">location_columns</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="DeltaCollection.coordinates">
+<a class="viewcode-back" href="../../../api.html#promis.geo.DeltaCollection.coordinates">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">coordinates</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unpack the location coordinates in combination to bearing and speed as numpy array.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The indices of this Collection as numpy array</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">location_columns</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">[:</span><span class="mi">4</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">location_columns</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="DeltaCollection.append">
+<a class="viewcode-back" href="../../../api.html#promis.geo.DeltaCollection.append">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">append</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">coordinates</span><span class="p">:</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">PolarLocation</span> <span class="o">|</span> <span class="n">CartesianLocation</span><span class="p">],</span>
+        <span class="n">values</span><span class="p">:</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Append location and associated value vectors to collection. Coordinates should either be 2 or 4 dimensional,</span>
+<span class="sd">        if 2D, bearing and speed are assumed to be 0.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            coordinates: A list of locations to append or matrix of coordinates.</span>
+<span class="sd">            values: The associated values as 2D matrix, each row belongs to a single location</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">coordinates</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">coordinates</span> <span class="o">=</span> <span class="n">hstack</span><span class="p">([</span><span class="n">c</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">coordinates</span><span class="p">])</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">if</span> <span class="n">coordinates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">coordinates</span> <span class="o">=</span> <span class="n">hstack</span><span class="p">((</span><span class="n">coordinates</span><span class="p">,</span> <span class="n">zeros</span><span class="p">(</span><span class="n">coordinates</span><span class="o">.</span><span class="n">shape</span><span class="p">)))</span>
+        <span class="k">if</span> <span class="n">coordinates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">%</span> <span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">coordinates</span> <span class="o">=</span> <span class="n">coordinates</span><span class="p">[:</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+
+        <span class="c1"># TODO solve elegantly without preprocessing</span>
+    
+        <span class="n">Collection</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coordinates</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="DeltaCollection.scatter">
+<a class="viewcode-back" href="../../../api.html#promis.geo.DeltaCollection.scatter">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">scatter</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">value_index</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">bearing</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">speed</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>  <span class="n">plot_basemap</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">zoom</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;linear&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a scatterplot of this Collection.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            value_index: Which value of the</span>
+<span class="sd">            plot_basemap: Whether an OpenStreetMap tile shall be rendered below</span>
+<span class="sd">            ax: The axis to plot to, default pyplot context if None</span>
+<span class="sd">            zoom: The zoom level of the OSM basemap, default 16</span>
+<span class="sd">            **kwargs: Args passed to the matplotlib scatter function</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">value_index</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_values</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Value index </span><span class="si">{</span><span class="n">value_index</span><span class="si">}</span><span class="s2"> too large for data with </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_values</span><span class="si">}</span><span class="s2"> values&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Would cause circular import if done at module scope</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">promis.loaders</span><span class="w"> </span><span class="kn">import</span> <span class="n">SpatialLoader</span>
+
+        <span class="c1"># Either render with given axis or default context</span>
+        <span class="k">if</span> <span class="n">ax</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
+
+        <span class="c1"># Render base map</span>
+        <span class="k">if</span> <span class="n">plot_basemap</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">basemap</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">basemap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_basemap</span><span class="p">(</span><span class="n">zoom</span><span class="p">)</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">basemap</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">extent</span><span class="p">())</span>
+
+        <span class="c1"># Scatter collection data</span>
+        <span class="n">unique_locations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">unique_coordinates</span><span class="p">()</span>
+        <span class="n">coordinates</span> <span class="o">=</span> <span class="n">column_stack</span><span class="p">((</span>
+            <span class="n">unique_locations</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span>
+            <span class="n">unique_locations</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span>
+            <span class="n">repeat</span><span class="p">(</span><span class="n">bearing</span><span class="p">,</span> <span class="n">unique_locations</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+            <span class="n">repeat</span><span class="p">(</span><span class="n">speed</span><span class="p">,</span> <span class="n">unique_locations</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+        <span class="p">))</span>
+        <span class="n">interpolate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_interpolator</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">)</span>
+        <span class="n">colors</span> <span class="o">=</span> <span class="n">interpolate</span><span class="p">(</span><span class="n">coordinates</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_values</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">colors</span> <span class="o">=</span> <span class="n">colors</span><span class="p">[:,</span> <span class="n">value_index</span><span class="p">]</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">coordinates</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">coordinates</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="n">colors</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+    
+
+<div class="viewcode-block" id="DeltaCollection.get_bearings">
+<a class="viewcode-back" href="../../../api.html#promis.geo.DeltaCollection.get_bearings">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_bearings</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;bearing&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span></div>
+
+    
+<div class="viewcode-block" id="DeltaCollection.get_speeds">
+<a class="viewcode-back" href="../../../api.html#promis.geo.DeltaCollection.get_speeds">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_speeds</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NDArray</span><span class="p">[</span><span class="n">Any</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;speed&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="CartesianDeltaCollection">
+<a class="viewcode-back" href="../../../api.html#promis.geo.CartesianDeltaCollection">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CartesianDeltaCollection</span><span class="p">(</span><span class="n">DeltaCollection</span><span class="p">,</span> <span class="n">CartesianCollection</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin</span><span class="p">:</span> <span class="n">PolarLocation</span><span class="p">,</span> <span class="n">number_of_values</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">CartesianDeltaCollection</span><span class="o">.</span><span class="n">_columns</span><span class="p">(</span><span class="n">number_of_values</span><span class="p">),</span> <span class="n">origin</span><span class="p">,</span> <span class="n">number_of_values</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_columns</span><span class="p">(</span><span class="n">number_of_values</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;east&quot;</span><span class="p">,</span> <span class="s2">&quot;north&quot;</span><span class="p">,</span> <span class="s2">&quot;bearing&quot;</span><span class="p">,</span> <span class="s2">&quot;speed&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;v</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">number_of_values</span><span class="p">)]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dimensions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the dimensions of this Collection in meters.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The dimensions of this Collection in meters as ``(width, height)``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">west</span><span class="p">,</span> <span class="n">east</span><span class="p">,</span> <span class="n">south</span><span class="p">,</span> <span class="n">north</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">extent</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">east</span> <span class="o">-</span> <span class="n">west</span><span class="p">,</span> <span class="n">north</span> <span class="o">-</span> <span class="n">south</span>
+
+<div class="viewcode-block" id="CartesianDeltaCollection.to_cartesian_locations">
+<a class="viewcode-back" href="../../../api.html#promis.geo.CartesianDeltaCollection.to_cartesian_locations">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_cartesian_locations</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">CartesianLocation</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the cartesian locations, as well as bearings and speed</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list[CartesianLocation]: A list of the cartesian locations</span>
+<span class="sd">            list[float]: A list of corresponding bearings</span>
+<span class="sd">            list[float]: A list of corresponding speeds</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">coordinates</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()</span>
+
+        <span class="n">locations</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">coordinates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">locations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">CartesianLocation</span><span class="p">(</span><span class="n">east</span><span class="o">=</span><span class="n">coordinates</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">north</span><span class="o">=</span><span class="n">coordinates</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span>
+
+        <span class="k">return</span> <span class="n">locations</span></div>
+
+
+<div class="viewcode-block" id="CartesianDeltaCollection.to_polar">
+<a class="viewcode-back" href="../../../api.html#promis.geo.CartesianDeltaCollection.to_polar">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_polar</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;PolarDeltaCollection&quot;</span><span class="p">:</span>
+        <span class="c1"># Apply the inverse projection of the origin location</span>
+        <span class="n">longitudes</span><span class="p">,</span> <span class="n">latitudes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">projection</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;east&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;north&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span> <span class="n">inverse</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Create the new collection in polar coordinates</span>
+        <span class="n">polar_collection</span> <span class="o">=</span> <span class="n">PolarDeltaCollection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_values</span><span class="p">)</span>
+        <span class="n">polar_collection</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;longitude&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">longitudes</span>
+        <span class="n">polar_collection</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;latitude&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">latitudes</span>
+        <span class="n">polar_collection</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;bearing&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;bearing&quot;</span><span class="p">]</span>
+        <span class="n">polar_collection</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;speed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;speed&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Copy over the values</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_values</span><span class="p">):</span>
+            <span class="n">polar_collection</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;v</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;v</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">polar_collection</span></div>
+
+
+<div class="viewcode-block" id="CartesianDeltaCollection.get_interpolator">
+<a class="viewcode-back" href="../../../api.html#promis.geo.CartesianDeltaCollection.get_interpolator">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_interpolator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;linear&quot;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get an interpolator for the data. Assumes a grid structure of the data.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            method: The interpolation method to use</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            A callable interpolator function</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># TODO link to grid class / remove assumption</span>
+        <span class="n">grid_axes</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">i</span><span class="p">]]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">)]</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">4</span><span class="p">:]]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+                <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">grid_axes</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">grid_axes</span><span class="p">))]</span> <span class="o">+</span> <span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span> <span class="o">-</span> <span class="mi">4</span><span class="p">],</span>
+                <span class="n">order</span><span class="o">=</span><span class="s2">&quot;F&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">RegularGridInterpolator</span><span class="p">(</span>
+            <span class="n">grid_axes</span><span class="p">,</span>
+            <span class="n">values</span><span class="p">,</span>
+            <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span>
+            <span class="n">bounds_error</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">fill_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="PolarDeltaCollection">
+<a class="viewcode-back" href="../../../api.html#promis.geo.PolarDeltaCollection">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PolarDeltaCollection</span><span class="p">(</span><span class="n">DeltaCollection</span><span class="p">,</span> <span class="n">PolarCollection</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">origin</span><span class="p">:</span> <span class="n">PolarLocation</span><span class="p">,</span> <span class="n">number_of_values</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">PolarDeltaCollection</span><span class="o">.</span><span class="n">_columns</span><span class="p">(</span><span class="n">number_of_values</span><span class="p">),</span> <span class="n">origin</span><span class="p">,</span> <span class="n">number_of_values</span><span class="p">)</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_columns</span><span class="p">(</span><span class="n">number_of_values</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;longitude&quot;</span><span class="p">,</span> <span class="s2">&quot;latitude&quot;</span><span class="p">,</span> <span class="s2">&quot;bearing&quot;</span><span class="p">,</span> <span class="s2">&quot;speed&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="sa">f</span><span class="s2">&quot;v</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">number_of_values</span><span class="p">)]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">dimensions</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get the dimensions of this Collection in meters.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The dimensions of this Collection in meters as ``(width, height)``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_cartesian</span><span class="p">()</span><span class="o">.</span><span class="n">dimensions</span>
+
+<div class="viewcode-block" id="PolarDeltaCollection.to_polar_locations">
+<a class="viewcode-back" href="../../../api.html#promis.geo.PolarDeltaCollection.to_polar_locations">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_polar_locations</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">PolarLocation</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the cartesian locations, as well as bearings and speed</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            list[CartesianLocation]: A list of the polar locations</span>
+<span class="sd">            list[float]: A list of corresponding bearings</span>
+<span class="sd">            list[float]: A list of corresponding speeds</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">coordinates</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">coordinates</span><span class="p">()</span>
+
+        <span class="n">locations</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">coordinates</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">locations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">PolarLocation</span><span class="p">(</span><span class="n">longitude</span><span class="o">=</span><span class="n">coordinates</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">latitude</span><span class="o">=</span><span class="n">coordinates</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">]))</span>
+
+        <span class="k">return</span> <span class="n">locations</span><span class="p">,</span> <span class="n">coordinates</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">coordinates</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="PolarDeltaCollection.to_cartesian">
+<a class="viewcode-back" href="../../../api.html#promis.geo.PolarDeltaCollection.to_cartesian">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_cartesian</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CartesianDeltaCollection</span><span class="p">:</span>
+        <span class="c1"># Apply the inverse projection of the origin location</span>
+        <span class="n">easts</span><span class="p">,</span> <span class="n">norths</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="o">.</span><span class="n">projection</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;longitude&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;latitude&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Create the new collection in polar coordinates</span>
+        <span class="n">cartesian_collection</span> <span class="o">=</span> <span class="n">CartesianDeltaCollection</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">origin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">number_of_values</span><span class="p">)</span>
+        <span class="n">cartesian_collection</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;east&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">easts</span>
+        <span class="n">cartesian_collection</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;north&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">norths</span>
+        <span class="n">cartesian_collection</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;bearing&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;bearing&quot;</span><span class="p">]</span>
+        <span class="n">cartesian_collection</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;speed&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;speed&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Copy over the values</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">number_of_values</span><span class="p">):</span>
+            <span class="n">cartesian_collection</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;v</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;v</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">cartesian_collection</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Simon Kohaut.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
